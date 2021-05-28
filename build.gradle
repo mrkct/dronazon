@@ -39,11 +39,11 @@ dependencies {
     // https://mvnrepository.com/artifact/org.codehaus.jackson/jackson-core-asl
     implementation 'org.codehaus.jackson:jackson-core-asl:1.9.2'
     // https://mvnrepository.com/artifact/org.codehaus.jackson/jackson-jaxrs
-    implementation 'org.codehaus.jackson:jackson-jaxrs:1.9.2'
+    implementation 'org.codehaus.jackson:jackson-jaxrs:1.9.11'
     // https://mvnrepository.com/artifact/org.codehaus.jackson/jackson-mapper-asl
     implementation 'org.codehaus.jackson:jackson-mapper-asl:1.9.2'
     // https://mvnrepository.com/artifact/org.codehaus.jackson/jackson-xc
-    implementation 'org.codehaus.jackson:jackson-xc:1.9.2'
+    implementation 'org.codehaus.jackson:jackson-xc:1.9.11'
     // https://mvnrepository.com/artifact/com.sun.jersey/jersey-client
     implementation 'com.sun.jersey:jersey-client:1.19.1'
     // https://mvnrepository.com/artifact/com.sun.jersey/jersey-core
@@ -53,9 +53,9 @@ dependencies {
     // https://mvnrepository.com/artifact/com.sun.jersey/jersey-server
     implementation 'com.sun.jersey:jersey-server:1.19.1'
     // https://mvnrepository.com/artifact/com.sun.jersey/jersey-servlet
-    implementation 'com.sun.jersey:jersey-servlet:1.19.1'
+    implementation 'com.sun.jersey:jersey-servlet:1.19.4'
     // https://mvnrepository.com/artifact/org.codehaus.jettison/jettison
-    implementation 'org.codehaus.jettison:jettison:1.1'
+    implementation 'org.codehaus.jettison:jettison:1.4.1'
     // https://mvnrepository.com/artifact/javax.ws.rs/jsr311-api
     implementation 'javax.ws.rs:jsr311-api:1.1.1'
     // https://mvnrepository.com/artifact/com.sun.jersey/jersey-server
