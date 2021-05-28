@@ -53,7 +53,7 @@ dependencies {
     // https://mvnrepository.com/artifact/com.sun.jersey/jersey-server
     implementation 'com.sun.jersey:jersey-server:1.19.1'
     // https://mvnrepository.com/artifact/com.sun.jersey/jersey-servlet
-    implementation 'com.sun.jersey:jersey-servlet:1.19.1'
+    implementation 'com.sun.jersey:jersey-servlet:1.19.4'
     // https://mvnrepository.com/artifact/org.codehaus.jettison/jettison
     implementation 'org.codehaus.jettison:jettison:1.4.1'
     // https://mvnrepository.com/artifact/javax.ws.rs/jsr311-api
