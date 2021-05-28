@@ -24,7 +24,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.1'
     testImplementation 'org.assertj:assertj-core:3.19.0'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.1'
-    testImplementation "org.mockito:mockito-core:2.+"
+    testImplementation "org.mockito:mockito-core:3.+"
 
     // GRPC Dependencies
     // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
