@@ -1,2 +1,2 @@
-Main.java
- Main
+it/cutecchia/sdp/Main.java
+ it.cutecchia.sdp.Main
