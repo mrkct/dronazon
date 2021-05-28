@@ -43,7 +43,7 @@ dependencies {
     // https://mvnrepository.com/artifact/org.codehaus.jackson/jackson-mapper-asl
     implementation 'org.codehaus.jackson:jackson-mapper-asl:1.9.2'
     // https://mvnrepository.com/artifact/org.codehaus.jackson/jackson-xc
-    implementation 'org.codehaus.jackson:jackson-xc:1.9.2'
+    implementation 'org.codehaus.jackson:jackson-xc:1.9.11'
     // https://mvnrepository.com/artifact/com.sun.jersey/jersey-client
     implementation 'com.sun.jersey:jersey-client:1.19.1'
     // https://mvnrepository.com/artifact/com.sun.jersey/jersey-core
@@ -84,7 +84,7 @@ protobuf {
 
     plugins {
         grpc {
-            artifact = 'io.grpc:protoc-gen-grpc-java:1.25.0'
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.38.0'
         }
     }
 
