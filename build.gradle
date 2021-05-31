@@ -51,7 +51,7 @@ dependencies {
     // https://mvnrepository.com/artifact/com.sun.jersey/jersey-json
     implementation 'com.sun.jersey:jersey-json:1.19.1'
     // https://mvnrepository.com/artifact/com.sun.jersey/jersey-server
-    implementation 'com.sun.jersey:jersey-server:1.19.1'
+    implementation 'com.sun.jersey:jersey-server:1.19.4'
     // https://mvnrepository.com/artifact/com.sun.jersey/jersey-servlet
     implementation 'com.sun.jersey:jersey-servlet:1.19.4'
     // https://mvnrepository.com/artifact/org.codehaus.jettison/jettison
@@ -59,7 +59,7 @@ dependencies {
     // https://mvnrepository.com/artifact/javax.ws.rs/jsr311-api
     implementation 'javax.ws.rs:jsr311-api:1.1.1'
     // https://mvnrepository.com/artifact/com.sun.jersey/jersey-server
-    implementation 'com.sun.jersey:jersey-server:1.2'
+    implementation 'com.sun.jersey:jersey-server:1.19.4'
 
     // MQTT Dependencies
     // https://mvnrepository.com/artifact/org.eclipse.paho/org.eclipse.paho.client.mqttv3
