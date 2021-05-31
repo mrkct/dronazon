@@ -31,7 +31,7 @@ dependencies {
     implementation 'com.google.protobuf:protobuf-java:3.10.0'
 
     // https://mvnrepository.com/artifact/io.grpc/grpc-all
-    implementation 'io.grpc:grpc-all:1.25.0'
+    implementation 'io.grpc:grpc-all:1.38.0'
     
     implementation 'com.google.code.gson:gson:2.8.6'
 
