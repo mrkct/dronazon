@@ -28,7 +28,7 @@ dependencies {
 
     // GRPC Dependencies
     // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
-    implementation 'com.google.protobuf:protobuf-java:3.10.0'
+    implementation 'com.google.protobuf:protobuf-java:3.17.2'
 
     // https://mvnrepository.com/artifact/io.grpc/grpc-all
     implementation 'io.grpc:grpc-all:1.25.0'
