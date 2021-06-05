@@ -1,0 +1,65 @@
+plugins {
+    id "java"
+    id "war" // for REST
+}
+
+group 'it.cutecchia.sdp'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+
+    implementation 'com.google.code.gson:gson:2.7'
+
+    implementation group: 'org.codehaus.jackson', name: 'jackson-core-asl', version: '1.9.2'
+    implementation group: 'org.codehaus.jackson', name: 'jackson-jaxrs', version: '1.9.2'
+    implementation group: 'org.codehaus.jackson', name: 'jackson-mapper-asl', version: '1.9.2'
+    implementation group: 'org.codehaus.jackson', name: 'jackson-xc', version: '1.9.2'
+    implementation group: 'com.sun.jersey', name: 'jersey-client', version: '1.19.1'
+    implementation group: 'com.sun.jersey', name: 'jersey-core', version: '1.19.1'
+    implementation group: 'com.sun.jersey', name: 'jersey-json', version: '1.19.1'
+    implementation group: 'com.sun.jersey', name: 'jersey-server', version: '1.19.1'
+    implementation group: 'com.sun.jersey', name: 'jersey-servlet', version: '1.19.1'
+    implementation group: 'org.codehaus.jettison', name: 'jettison', version: '1.1'
+    implementation group: 'javax.ws.rs', name: 'jsr311-api', version: '1.1.1'
+    implementation group: 'com.sun.jersey', name: 'jersey-server', version: '1.2'
+
+    // MQTT Dependencies
+    implementation group: 'org.eclipse.paho', name: 'org.eclipse.paho.client.mqttv3', version: '1.2.5'
+}
+
+
+test {
+    useJUnitPlatform()
+}
+
+task runOrderGenerator(type: JavaExec) {
+    group = "Admin"
+    description = "Run the main class of the Dronazon order generator"
+    classpath = sourceSets.main.runtimeClasspath
+    main = "it.cutecchia.sdp.website.Main"
+
+    java {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(8))
+        }
+    }
+}
+
+task runAdminServer(type: JavaExec) {
+    group = "Admin"
+    description = "Run the main class of the Dronazon admin server"
+    classpath = sourceSets.main.runtimeClasspath
+    main = "it.cutecchia.sdp.admin.server.Main"
+
+    java {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(8))
+        }
+    }
+}
