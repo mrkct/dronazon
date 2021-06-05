@@ -2,7 +2,6 @@ package it.cutecchia.sdp.website;
 
 import it.cutecchia.sdp.common.CityPoint;
 import it.cutecchia.sdp.common.Order;
-
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;

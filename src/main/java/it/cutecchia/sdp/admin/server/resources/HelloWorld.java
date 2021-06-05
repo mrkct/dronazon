@@ -8,34 +8,31 @@ import javax.ws.rs.Produces;
 @Path("/helloworld")
 public class HelloWorld {
 
-    @GET
-    @Produces("text/plain")
-    public String helloWorld(){
-        return "Hello world!";
-    }
+  @GET
+  @Produces("text/plain")
+  public String helloWorld() {
+    return "Hello world!";
+  }
 
-    @GET
-    @Path("{name}")
-    @Produces({"text/plain"})
-    public String helloWorldName(@PathParam("name") String name){
+  @GET
+  @Path("{name}")
+  @Produces({"text/plain"})
+  public String helloWorldName(@PathParam("name") String name) {
 
-        return "Hello, "+name+"!";
+    return "Hello, " + name + "!";
+  }
 
-    }
+  @GET
+  @Produces("application/json")
+  public String helloWorld2() {
+    return "{\"message\": \"helloWorld\"}";
+  }
 
-    @GET
-    @Produces("application/json")
-    public String helloWorld2(){
-        return "{\"message\": \"helloWorld\"}";
+  @Path("inner")
+  @GET
+  @Produces("text/plain")
+  public String innerHello() {
 
-    }
-
-    @Path("inner")
-    @GET
-    @Produces("text/plain")
-    public String innerHello(){
-
-        return "Inner Hello!";
-    }
-
+    return "Inner Hello!";
+  }
 }
