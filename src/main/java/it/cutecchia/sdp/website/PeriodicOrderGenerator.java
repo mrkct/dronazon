@@ -31,13 +31,10 @@ public class PeriodicOrderGenerator extends OrderReceiver {
         millisBetweenEachOrder);
   }
 
-  private CityPoint randomCityPoint() {
-    return new CityPoint(
-        randomGenerator.nextInt(CityPoint.CITY_WIDTH),
-        randomGenerator.nextInt(CityPoint.CITY_HEIGHT));
-  }
-
   private Order generateOrder() {
-    return new Order(nextId++, randomCityPoint(), randomCityPoint());
+    return new Order(
+        nextId++,
+        CityPoint.randomPosition(randomGenerator),
+        CityPoint.randomPosition(randomGenerator));
   }
 }
