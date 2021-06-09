@@ -8,6 +8,7 @@ import it.cutecchia.sdp.admin.server.responses.DroneEnterResponse;
 import it.cutecchia.sdp.admin.server.responses.JsonResponse;
 import it.cutecchia.sdp.admin.server.stores.DronesStore;
 import it.cutecchia.sdp.admin.server.stores.InMemoryDronesStore;
+
 import java.util.Set;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
@@ -28,15 +29,14 @@ public class DronesResource {
 
       // FIXME: Maybe we should return the entire set when we addNewDrone and then search the new
       // drone into that
-      DroneInfo newlyAddedDrone = droneStore.addNewDrone(request.getDroneId());
+      DroneInfo newlyAddedDrone = droneStore.addNewDrone(
+              request.getDroneId(),
+              request.getIpAddress(), request.getConnectionPort()
+      );
       Set<DroneInfo> drones = droneStore.getRegisteredDrones();
 
       return Response.ok(
               JsonResponse.success(gson, new DroneEnterResponse(newlyAddedDrone, drones)))
-          .build();
-    } catch (JsonSyntaxException error) {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity(JsonResponse.error(gson, "Failed to parse json body"))
           .build();
     } catch (DronesStore.DroneIdAlreadyInUse error) {
       return Response.status(Response.Status.CONFLICT)
