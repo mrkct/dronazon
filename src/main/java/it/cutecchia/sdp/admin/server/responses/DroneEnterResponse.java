@@ -8,13 +8,10 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class DroneEnterResponse {
   private final DroneInfo newlyAddedDroneInfo;
   private final Set<DroneInfo> allDrones;
-  private final DroneInfo masterDrone;
 
-  public DroneEnterResponse(
-      DroneInfo newlyAddedDroneInfo, Set<DroneInfo> allDrones, DroneInfo masterDrone) {
+  public DroneEnterResponse(DroneInfo newlyAddedDroneInfo, Set<DroneInfo> allDrones) {
     this.newlyAddedDroneInfo = newlyAddedDroneInfo;
     this.allDrones = allDrones;
-    this.masterDrone = masterDrone;
   }
 
   public Set<DroneInfo> getAllDrones() {
@@ -23,9 +20,5 @@ public class DroneEnterResponse {
 
   public DroneInfo getNewlyAddedDroneInfo() {
     return newlyAddedDroneInfo;
-  }
-
-  public DroneInfo getMasterDrone() {
-    return masterDrone;
   }
 }

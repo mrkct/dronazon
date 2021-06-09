@@ -1,7 +1,6 @@
 package it.cutecchia.sdp.admin.server.stores;
 
 import it.cutecchia.sdp.admin.server.beans.DroneInfo;
-import java.util.Optional;
 import java.util.Set;
 
 public interface DronesStore {
@@ -14,6 +13,4 @@ public interface DronesStore {
   void removeDroneById(long droneId) throws DroneIdNotFound;
 
   Set<DroneInfo> getRegisteredDrones();
-
-  Optional<DroneInfo> getMasterDrone();
 }

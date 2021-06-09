@@ -8,13 +8,11 @@ public class DroneInfo {
   private final long id;
   private final CityPoint position;
   private final int batteryPercentage;
-  private final boolean isMaster;
 
-  public DroneInfo(long id, CityPoint position, int batteryPercentage, boolean isMaster) {
+  public DroneInfo(long id, CityPoint position, int batteryPercentage) {
     this.id = id;
     this.position = position;
     this.batteryPercentage = batteryPercentage;
-    this.isMaster = isMaster;
   }
 
   public long getId() {
@@ -26,14 +24,10 @@ public class DroneInfo {
   }
 
   public DroneInfo moveTo(CityPoint newPosition) {
-    return new DroneInfo(this.id, newPosition, this.batteryPercentage, this.isMaster);
+    return new DroneInfo(this.id, newPosition, this.batteryPercentage);
   }
 
   public int getBatteryPercentage() {
     return batteryPercentage;
-  }
-
-  public boolean isMaster() {
-    return isMaster;
   }
 }

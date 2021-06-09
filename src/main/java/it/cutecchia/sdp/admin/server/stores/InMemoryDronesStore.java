@@ -19,8 +19,7 @@ public class InMemoryDronesStore implements DronesStore {
 
   @Override
   public DroneInfo addNewDrone(long droneId) throws DroneIdAlreadyInUse {
-    DroneInfo newDrone =
-        new DroneInfo(droneId, CityPoint.randomPosition(random), 100, drones.size() == 0);
+    DroneInfo newDrone = new DroneInfo(droneId, CityPoint.randomPosition(random), 100);
 
     synchronized (drones) {
       if (drones.parallelStream().anyMatch(drone -> drone.getId() == droneId)) {
@@ -41,10 +40,5 @@ public class InMemoryDronesStore implements DronesStore {
   @Override
   public synchronized Set<DroneInfo> getRegisteredDrones() {
     return new HashSet<>(drones);
-  }
-
-  @Override
-  public synchronized Optional<DroneInfo> getMasterDrone() {
-    return drones.parallelStream().filter(DroneInfo::isMaster).findAny();
   }
 }

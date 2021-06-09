@@ -5,8 +5,7 @@ import com.google.gson.JsonSyntaxException;
 import it.cutecchia.sdp.admin.server.beans.DroneInfo;
 import it.cutecchia.sdp.admin.server.requests.DroneEnterRequest;
 import it.cutecchia.sdp.admin.server.responses.DroneEnterResponse;
-import it.cutecchia.sdp.admin.server.responses.JsonErrorResponse;
-import it.cutecchia.sdp.admin.server.responses.JsonSuccessResponse;
+import it.cutecchia.sdp.admin.server.responses.JsonResponse;
 import it.cutecchia.sdp.admin.server.stores.DronesStore;
 import it.cutecchia.sdp.admin.server.stores.InMemoryDronesStore;
 import java.util.Set;
@@ -27,29 +26,26 @@ public class DronesResource {
     try {
       DronesStore droneStore = InMemoryDronesStore.getInstance();
 
-      // FIXME: Al momento è poco efficiente sta cosa, sarebbe meglio cercare il master dentro il
-      // set di droni che mi è stato ritornato invece di lockare quello principale
+      // FIXME: Maybe we should return the entire set when we addNewDrone and then search the new
+      // drone into that
       DroneInfo newlyAddedDrone = droneStore.addNewDrone(request.getDroneId());
       Set<DroneInfo> drones = droneStore.getRegisteredDrones();
 
       return Response.ok(
-              JsonSuccessResponse.create(
-                  gson,
-                  new DroneEnterResponse(
-                      newlyAddedDrone, drones, droneStore.getMasterDrone().orElse(null))))
+              JsonResponse.success(gson, new DroneEnterResponse(newlyAddedDrone, drones)))
           .build();
     } catch (JsonSyntaxException error) {
       return Response.status(Response.Status.BAD_REQUEST)
-          .entity(JsonErrorResponse.create(gson, "Failed to parse json body"))
+          .entity(JsonResponse.error(gson, "Failed to parse json body"))
           .build();
     } catch (DronesStore.DroneIdAlreadyInUse error) {
       return Response.status(Response.Status.CONFLICT)
-          .entity(JsonErrorResponse.create(gson, "There already is a drone with that id"))
+          .entity(JsonResponse.error(gson, "There already is a drone with that id"))
           .build();
     } catch (Exception error) {
       error.printStackTrace();
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(JsonErrorResponse.create(gson, "Internal server error"))
+          .entity(JsonResponse.error(gson, "Internal server error"))
           .build();
     }
   }
