@@ -2,10 +2,8 @@ package it.cutecchia.sdp.admin.server.stores;
 
 import it.cutecchia.sdp.admin.server.beans.DroneInfo;
 import it.cutecchia.sdp.common.CityPoint;
-
-import javax.annotation.Nonnull;
-import java.net.InetSocketAddress;
 import java.util.*;
+import javax.annotation.Nonnull;
 
 public class InMemoryDronesStore implements DronesStore {
   private static DronesStore instance = null;
@@ -21,13 +19,10 @@ public class InMemoryDronesStore implements DronesStore {
   private final Random random = new Random();
 
   @Override
-  public DroneInfo addNewDrone(long droneId, @Nonnull String ipAddress, int connectionPort) throws DroneIdAlreadyInUse {
-    DroneInfo newDrone = new DroneInfo(
-            droneId,
-            CityPoint.randomPosition(random),
-            100,
-            ipAddress,
-            connectionPort);
+  public DroneInfo addNewDrone(int droneId, @Nonnull String ipAddress, int connectionPort)
+      throws DroneIdAlreadyInUse {
+    DroneInfo newDrone =
+        new DroneInfo(droneId, CityPoint.randomPosition(random), 100, ipAddress, connectionPort);
 
     synchronized (drones) {
       if (drones.parallelStream().anyMatch(drone -> drone.getId() == droneId)) {
@@ -39,7 +34,7 @@ public class InMemoryDronesStore implements DronesStore {
   }
 
   @Override
-  public synchronized void removeDroneById(long droneId) throws DroneIdNotFound {
+  public synchronized void removeDroneById(int droneId) throws DroneIdNotFound {
     if (!drones.removeIf(drone -> drone.getId() == droneId)) {
       throw new DroneIdNotFound();
     }
