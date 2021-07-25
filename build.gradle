@@ -107,3 +107,16 @@ task runAdminServer(type: JavaExec) {
         }
     }
 }
+
+task runDrone(type: JavaExec) {
+    group = "Drone"
+    description = "Run the main class of a Dronazon drone"
+    classpath = sourceSets.main.runtimeClasspath
+    main = "it.cutecchia.sdp.drones.Main"
+
+    java {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(8))
+        }
+    }
+}

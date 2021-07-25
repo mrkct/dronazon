@@ -9,13 +9,11 @@ import java.util.TimerTask;
 public class PeriodicOrderGenerator extends OrderReceiver {
   private long nextId = 0;
 
-  private final Random randomGenerator;
   private final Timer timer;
   private final long millisBetweenEachOrder;
 
   public PeriodicOrderGenerator(long millisBetweenEachOrder, Timer timer, Random randomGenerator) {
     this.millisBetweenEachOrder = millisBetweenEachOrder;
-    this.randomGenerator = randomGenerator;
     this.timer = timer;
   }
 
@@ -32,9 +30,6 @@ public class PeriodicOrderGenerator extends OrderReceiver {
   }
 
   private Order generateOrder() {
-    return new Order(
-        nextId++,
-        CityPoint.randomPosition(randomGenerator),
-        CityPoint.randomPosition(randomGenerator));
+    return new Order(nextId++, CityPoint.randomPosition(), CityPoint.randomPosition());
   }
 }

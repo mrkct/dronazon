@@ -7,7 +7,7 @@ import com.sun.jersey.api.client.WebResource;
 
 public class Main {
 
-  public static void main(String args[]) {
+  public static void main(String[] args) {
     Client client = Client.create();
     String serverAddress = "http://localhost:1337";
     ClientResponse clientResponse = null;

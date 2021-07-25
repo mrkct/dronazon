@@ -1,4 +1,4 @@
-package it.cutecchia.sdp.admin.server.responses;
+package it.cutecchia.sdp.admin.server.messages;
 
 import com.google.gson.Gson;
 

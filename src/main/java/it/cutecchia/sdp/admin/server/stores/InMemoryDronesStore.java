@@ -1,7 +1,6 @@
 package it.cutecchia.sdp.admin.server.stores;
 
-import it.cutecchia.sdp.admin.server.beans.DroneInfo;
-import it.cutecchia.sdp.common.CityPoint;
+import it.cutecchia.sdp.common.DroneIdentifier;
 import java.util.*;
 import javax.annotation.Nonnull;
 
@@ -15,14 +14,12 @@ public class InMemoryDronesStore implements DronesStore {
     return instance;
   }
 
-  private final Set<DroneInfo> drones = new HashSet<>();
-  private final Random random = new Random();
+  private final Set<DroneIdentifier> drones = new HashSet<>();
 
   @Override
-  public DroneInfo addNewDrone(int droneId, @Nonnull String ipAddress, int connectionPort)
+  public void addNewDrone(int droneId, @Nonnull String ipAddress, int connectionPort)
       throws DroneIdAlreadyInUse {
-    DroneInfo newDrone =
-        new DroneInfo(droneId, CityPoint.randomPosition(random), 100, ipAddress, connectionPort);
+    DroneIdentifier newDrone = new DroneIdentifier(droneId, ipAddress, connectionPort);
 
     synchronized (drones) {
       if (drones.parallelStream().anyMatch(drone -> drone.getId() == droneId)) {
@@ -30,7 +27,6 @@ public class InMemoryDronesStore implements DronesStore {
       }
       drones.add(newDrone);
     }
-    return newDrone;
   }
 
   @Override
@@ -41,7 +37,7 @@ public class InMemoryDronesStore implements DronesStore {
   }
 
   @Override
-  public synchronized Set<DroneInfo> getRegisteredDrones() {
+  public synchronized Set<DroneIdentifier> getRegisteredDrones() {
     return new HashSet<>(drones);
   }
 }
