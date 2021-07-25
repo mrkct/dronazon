@@ -1,5 +1,6 @@
 package it.cutecchia.sdp.website;
 
+import com.google.gson.Gson;
 import it.cutecchia.sdp.common.Order;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Logger;
@@ -14,6 +15,7 @@ public class MqttOrderPublisher implements OrderPublisher {
   private final String orderTopic;
   private final MqttConnectOptions mqttConnectOptions;
   private final MqttClient mqttClient;
+  private final Gson gson = new Gson();
 
   public MqttOrderPublisher(MqttClient mqttClient, MqttConnectOptions options, String orderTopic) {
     this.orderTopic = orderTopic;
@@ -25,7 +27,7 @@ public class MqttOrderPublisher implements OrderPublisher {
   public void publishOrder(Order order) {
     try {
       log.info(String.format("Sending order %s...", order.toString()));
-      sendMqttMessage(orderTopic, order.toString());
+      sendMqttMessage(orderTopic, gson.toJson(order));
     } catch (MqttException e) {
       log.warning("Failed to send an order to the mqtt broker. Here is the stack trace: ");
       e.printStackTrace();

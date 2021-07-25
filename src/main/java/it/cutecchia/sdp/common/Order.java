@@ -1,5 +1,8 @@
 package it.cutecchia.sdp.common;
 
+import javax.xml.bind.annotation.XmlRootElement;
+
+@XmlRootElement
 public class Order {
   private final long id;
   private final CityPoint startPoint;
