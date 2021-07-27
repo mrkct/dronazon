@@ -3,16 +3,16 @@ package it.cutecchia.sdp.common;
 import javax.xml.bind.annotation.XmlRootElement;
 
 @XmlRootElement
-public class DroneInfo {
+public class DroneData {
   private final CityPoint position;
   private final int batteryPercentage;
 
-  public DroneInfo(CityPoint position, int batteryPercentage) {
+  public DroneData(CityPoint position, int batteryPercentage) {
     this.position = position;
     this.batteryPercentage = batteryPercentage;
   }
 
-  public DroneInfo(CityPoint position) {
+  public DroneData(CityPoint position) {
     this(position, 100);
   }
 
@@ -20,8 +20,8 @@ public class DroneInfo {
     return position;
   }
 
-  public DroneInfo moveTo(CityPoint newPosition) {
-    return new DroneInfo(newPosition, this.batteryPercentage);
+  public DroneData moveTo(CityPoint newPosition) {
+    return new DroneData(newPosition, this.batteryPercentage);
   }
 
   public int getBatteryPercentage() {
