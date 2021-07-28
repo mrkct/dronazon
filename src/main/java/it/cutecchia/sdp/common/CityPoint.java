@@ -3,7 +3,7 @@ package it.cutecchia.sdp.common;
 import java.util.Random;
 
 public class CityPoint {
-  private static Random random = new Random();
+  private static final Random random = new Random();
 
   public static final int CITY_WIDTH = 10;
   public static final int CITY_HEIGHT = 10;
@@ -21,6 +21,10 @@ public class CityPoint {
   public static CityPoint randomPosition() {
     return new CityPoint(
         random.nextInt(CityPoint.CITY_WIDTH), random.nextInt(CityPoint.CITY_HEIGHT));
+  }
+
+  public double distanceTo(CityPoint other) {
+    return Math.sqrt(Math.pow(this.x - other.x, 2) + Math.pow(this.y - other.y, 2));
   }
 
   @Override
