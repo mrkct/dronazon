@@ -15,6 +15,9 @@ repositories {
 
 spotless {
     java {
+        target project.fileTree(project.rootDir) {
+            include 'src/**/*.java'
+        }
         googleJavaFormat()
     }
 }
@@ -62,12 +65,12 @@ sourceSets {
 
 protobuf {
     protoc {
-        artifact = 'com.google.protobuf:protoc:3.17.2'
+        artifact = 'com.google.protobuf:protoc:3.10.1'
     }
 
     plugins {
         grpc {
-            artifact = 'io.grpc:protoc-gen-grpc-java:1.38.0'
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.25.0'
         }
     }
 
@@ -83,7 +86,7 @@ test {
 }
 
 task runOrderGenerator(type: JavaExec) {
-    group = "Admin"
+    group = "Quick Runs"
     description = "Run the main class of the Dronazon order generator"
     classpath = sourceSets.main.runtimeClasspath
     main = "it.cutecchia.sdp.website.Main"
@@ -96,7 +99,7 @@ task runOrderGenerator(type: JavaExec) {
 }
 
 task runAdminServer(type: JavaExec) {
-    group = "Admin"
+    group = "Quick Runs"
     description = "Run the main class of the Dronazon admin server"
     classpath = sourceSets.main.runtimeClasspath
     main = "it.cutecchia.sdp.admin.server.Main"
@@ -109,7 +112,7 @@ task runAdminServer(type: JavaExec) {
 }
 
 task runDrone(type: JavaExec) {
-    group = "Drone"
+    group = "Quick Runs"
     description = "Run the main class of a Dronazon drone"
     classpath = sourceSets.main.runtimeClasspath
     main = "it.cutecchia.sdp.drones.Main"
