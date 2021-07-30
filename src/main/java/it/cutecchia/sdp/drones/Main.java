@@ -2,6 +2,7 @@ package it.cutecchia.sdp.drones;
 
 import it.cutecchia.sdp.admin.server.AdminServerClient;
 import it.cutecchia.sdp.common.DroneIdentifier;
+import java.io.IOException;
 import java.util.Random;
 import java.util.Scanner;
 
@@ -29,10 +30,13 @@ public class Main {
     private final String adminServerAddress;
     private final int adminServerPort;
 
+    private static final int MIN_RPC_PORT = 10000;
+    private static final int MAX_RPC_PORT = 50000;
+
     public Args() {
       Random random = new Random();
-      droneId = random.nextInt();
-      rpcListenPort = 1234;
+      droneId = random.nextInt() & Integer.MAX_VALUE;
+      rpcListenPort = random.nextInt(MAX_RPC_PORT - MIN_RPC_PORT) + MIN_RPC_PORT;
       adminServerAddress = "localhost";
       adminServerPort = 1337;
     }
@@ -91,13 +95,20 @@ public class Main {
                 if ("quit".equalsIgnoreCase(keyboard.nextLine().trim())) {
                   break;
                 }
-                System.err.println("wrong");
               }
               keyboard.close();
               drone.shutdown();
             });
 
-    Thread droneThread = new Thread(drone::start);
+    Thread droneThread =
+        new Thread(
+            () -> {
+              try {
+                drone.start();
+              } catch (IOException e) {
+                e.printStackTrace();
+              }
+            });
 
     userInputThread.start();
     droneThread.start();
