@@ -1,0 +1,56 @@
+syntax = "proto3";
+package it.cutecchia.sdp.drones.grpc;
+
+
+message Empty {}
+
+message CityPointPacket {
+  int32 x = 1;
+  int32 y = 2;
+}
+
+message DroneIdentifierPacket {
+  int32 id = 1;
+  string address = 2;
+  int32 port = 3;
+}
+
+message DroneDataPacket {
+  int32 battery_percentage = 1;
+  CityPointPacket position = 2;
+}
+
+message DroneJoinMessage {
+  DroneIdentifierPacket sender = 1;
+  CityPointPacket starting_position = 2;
+}
+
+message DroneJoinResponse {
+  DroneIdentifierPacket sender = 1;
+  bool is_master = 2;
+}
+
+message DroneLeaveMessage {
+  DroneIdentifierPacket sender = 1;
+}
+
+message DroneLeaveResponse {
+  DroneIdentifierPacket sender = 1;
+}
+
+message CompletedDeliveryMessage {
+  DroneIdentifierPacket sender = 1;
+  uint64 timestamp = 2;
+  double travelled_kms = 3;
+  double pollution = 4;
+  int32 battery_percentage = 5;
+}
+
+service DroneService {
+  // Used by all drones
+  rpc NotifyDroneJoin(DroneJoinMessage) returns (DroneJoinResponse);
+  rpc NotifyDroneLeave(DroneLeaveMessage) returns (DroneLeaveResponse);
+
+  // Used only on the master
+  rpc NotifyCompletedDelivery(CompletedDeliveryMessage) returns (Empty);
+}

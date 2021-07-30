@@ -1,14 +1,44 @@
 package it.cutecchia.sdp.drones.states;
 
+import it.cutecchia.sdp.common.CityPoint;
 import it.cutecchia.sdp.common.DroneIdentifier;
+import it.cutecchia.sdp.common.Log;
 import it.cutecchia.sdp.drones.Drone;
-import java.util.Set;
+import it.cutecchia.sdp.drones.DroneCommunicationClient;
+import it.cutecchia.sdp.drones.responses.DroneJoinResponse;
+import it.cutecchia.sdp.drones.store.DroneStore;
+import java.util.Optional;
 
 public class EnteringRingState implements DroneState {
-  public EnteringRingState(Drone drone, Set<DroneIdentifier> allDrones) {}
+  private final Drone drone;
+  private final DroneStore store;
+  private final DroneCommunicationClient client;
+
+  public EnteringRingState(Drone drone, DroneStore store, DroneCommunicationClient client) {
+    this.drone = drone;
+    this.store = store;
+    this.client = client;
+  }
 
   @Override
-  public void start() {}
+  public void start() {
+    CityPoint startingPosition = drone.getData().getPosition();
+    for (DroneIdentifier destination : store.getAllDroneIdentifiers()) {
+      if (destination.equals(drone.getIdentifier())) {
+        continue;
+      }
+
+      Optional<DroneJoinResponse> response =
+          client.notifyDroneJoin(destination, drone.getIdentifier(), startingPosition);
+      if (!response.isPresent()) {
+        continue;
+      }
+
+      Log.info(
+          "notifyDroneJoin from #%d -> #%d success. %s",
+          drone.getIdentifier().getId(), destination.getId(), response.get().toString());
+    }
+  }
 
   @Override
   public void teardown() {}
