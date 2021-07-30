@@ -8,6 +8,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import it.cutecchia.sdp.admin.server.messages.DroneEnterRequest;
 import it.cutecchia.sdp.admin.server.messages.DroneEnterResponse;
 import it.cutecchia.sdp.common.DroneIdentifier;
+import it.cutecchia.sdp.common.Log;
 import javax.ws.rs.core.MediaType;
 
 public class AdminServerClient {
@@ -33,13 +34,14 @@ public class AdminServerClient {
 
   public DroneEnterResponse requestDroneToEnter(DroneIdentifier droneToEnter)
       throws DroneIdAlreadyInUse {
+    Log.info("AdminServerClient, droneToEnter=%s", droneToEnter);
     try {
       WebResource resource = client.resource(getServerEndpoint("/drones/" + droneToEnter.getId()));
       String response =
           resource
               .type(MediaType.APPLICATION_JSON)
-              .post(String.class, new DroneEnterRequest(droneToEnter));
-
+              .post(String.class, gson.toJson(new DroneEnterRequest(droneToEnter)));
+      Log.info("REST Response: %s", response);
       return gson.fromJson(response, DroneEnterResponse.class);
     } catch (UniformInterfaceException e) {
       if (e.getResponse().getStatusInfo().getStatusCode() == HttpResponseStatus.CONFLICT.code()) {

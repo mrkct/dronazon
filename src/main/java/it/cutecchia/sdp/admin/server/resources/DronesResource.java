@@ -7,6 +7,7 @@ import it.cutecchia.sdp.admin.server.stores.DronesStore;
 import it.cutecchia.sdp.admin.server.stores.InMemoryDronesStore;
 import it.cutecchia.sdp.common.CityPoint;
 import it.cutecchia.sdp.common.DroneIdentifier;
+import it.cutecchia.sdp.common.Log;
 import java.util.Set;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -23,7 +24,9 @@ public class DronesResource {
     Gson gson = new Gson();
     try {
       DronesStore droneStore = InMemoryDronesStore.getInstance();
-
+      Log.info(
+          "New drone: Id=%d, Address=%s, Port=%d",
+          droneId, request.getIpAddress(), request.getConnectionPort());
       droneStore.addNewDrone(droneId, request.getIpAddress(), request.getConnectionPort());
       Set<DroneIdentifier> drones = droneStore.getRegisteredDrones();
 
