@@ -5,6 +5,7 @@ import it.cutecchia.sdp.common.DroneIdentifier;
 import java.io.IOException;
 import java.util.Random;
 import java.util.Scanner;
+import org.eclipse.paho.client.mqttv3.MqttException;
 
 public class Main {
   private static class Args {
@@ -66,7 +67,7 @@ public class Main {
     }
   }
 
-  public static void main(String[] cliArgs) throws InterruptedException {
+  public static void main(String[] cliArgs) throws InterruptedException, MqttException {
     Args args;
     if (cliArgs.length > 0) {
       args = Args.fromCliArguments(cliArgs);
@@ -84,6 +85,7 @@ public class Main {
     Drone drone =
         new Drone(
             new DroneIdentifier(args.getDroneId(), "localhost", args.getRpcListenPort()),
+            new MqttOrderSource("mqtt.mrkct.xyz", 8000, "dronazon/smartcity/orders"),
             new AdminServerClient(args.getAdminServerAddress(), args.getAdminServerPort()));
 
     Thread userInputThread =

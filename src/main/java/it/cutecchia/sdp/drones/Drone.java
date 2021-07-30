@@ -1,10 +1,7 @@
 package it.cutecchia.sdp.drones;
 
 import it.cutecchia.sdp.admin.server.AdminServerClient;
-import it.cutecchia.sdp.common.CityPoint;
-import it.cutecchia.sdp.common.DroneData;
-import it.cutecchia.sdp.common.DroneIdentifier;
-import it.cutecchia.sdp.common.Log;
+import it.cutecchia.sdp.common.*;
 import it.cutecchia.sdp.drones.responses.DroneJoinResponse;
 import it.cutecchia.sdp.drones.states.DroneState;
 import it.cutecchia.sdp.drones.states.EnteringRingState;
@@ -19,18 +16,21 @@ import java.util.Set;
 public class Drone implements DroneCommunicationServer {
   private final AdminServerClient adminServerClient;
   private final DroneIdentifier identifier;
+  private final OrderSource orderSource;
   private final RpcDroneCommunicationMiddleware middleware;
   private DroneStore store;
 
   private DroneData data;
   private DroneState currentState;
 
-  public Drone(DroneIdentifier identifier, AdminServerClient adminServerClient) {
+  public Drone(
+      DroneIdentifier identifier, OrderSource orderSource, AdminServerClient adminServerClient) {
     this.identifier = identifier;
     this.adminServerClient = adminServerClient;
     this.currentState = new StartupState(this, adminServerClient);
     this.middleware = new RpcDroneCommunicationMiddleware(identifier, this);
     this.store = new SlaveDroneStore();
+    this.orderSource = orderSource;
   }
 
   public DroneIdentifier getIdentifier() {
@@ -42,8 +42,8 @@ public class Drone implements DroneCommunicationServer {
   }
 
   public void start() throws IOException {
-    this.currentState.start();
     this.middleware.startRpcServer();
+    this.currentState.start();
   }
 
   public void shutdown() {
@@ -66,7 +66,7 @@ public class Drone implements DroneCommunicationServer {
     if (allDrones.size() == 1) {
       MasterDroneStore masterDroneStore = new MasterDroneStore(store);
       store = masterDroneStore;
-      changeStateTo(new RingMasterState(this, masterDroneStore, middleware));
+      changeStateTo(new RingMasterState(this, masterDroneStore, middleware, orderSource));
     } else {
       store = new SlaveDroneStore(store);
       changeStateTo(new EnteringRingState(this, store, middleware));
