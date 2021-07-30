@@ -1,5 +1,6 @@
 package it.cutecchia.sdp.common;
 
+import it.cutecchia.sdp.drones.grpc.DroneServiceOuterClass;
 import java.util.Random;
 
 public class CityPoint {
@@ -16,6 +17,14 @@ public class CityPoint {
     }
     this.x = x;
     this.y = y;
+  }
+
+  public static CityPoint fromProto(DroneServiceOuterClass.CityPointPacket proto) {
+    return new CityPoint(proto.getX(), proto.getY());
+  }
+
+  public DroneServiceOuterClass.CityPointPacket toProto() {
+    return DroneServiceOuterClass.CityPointPacket.newBuilder().setX(x).setY(y).build();
   }
 
   public static CityPoint randomPosition() {
