@@ -1,7 +1,6 @@
 package it.cutecchia.sdp.drones.states;
 
 import it.cutecchia.sdp.common.CityPoint;
-import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.Log;
 import it.cutecchia.sdp.drones.Drone;
 import it.cutecchia.sdp.drones.DroneCommunicationClient;
@@ -23,21 +22,23 @@ public class EnteringRingState implements DroneState {
   @Override
   public void start() {
     CityPoint startingPosition = drone.getData().getPosition();
-    for (DroneIdentifier destination : store.getAllDroneIdentifiers()) {
-      if (destination.equals(drone.getIdentifier())) {
-        continue;
-      }
+    store.getAllDroneIdentifiers().parallelStream()
+        .forEach(
+            (destination) -> {
+              if (destination.equals(drone.getIdentifier())) {
+                return;
+              }
 
-      Optional<DroneJoinResponse> response =
-          client.notifyDroneJoin(destination, drone.getIdentifier(), startingPosition);
-      if (!response.isPresent()) {
-        continue;
-      }
+              Optional<DroneJoinResponse> response =
+                  client.notifyDroneJoin(destination, drone.getIdentifier(), startingPosition);
+              if (!response.isPresent()) {
+                return;
+              }
 
-      Log.info(
-          "notifyDroneJoin from #%d -> #%d success. %s",
-          drone.getIdentifier().getId(), destination.getId(), response.get().toString());
-    }
+              Log.info(
+                  "notifyDroneJoin from #%d -> #%d success. %s",
+                  drone.getIdentifier().getId(), destination.getId(), response.get().toString());
+            });
   }
 
   @Override
