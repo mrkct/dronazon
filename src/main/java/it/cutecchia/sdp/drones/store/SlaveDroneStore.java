@@ -8,11 +8,13 @@ import java.util.*;
 
 public class SlaveDroneStore implements DroneStore {
   private final SortedSet<DroneIdentifier> drones = new TreeSet<>();
+  private DroneIdentifier knownMaster = null;
 
   public SlaveDroneStore() {}
 
   public SlaveDroneStore(DroneStore store) {
     store.getAllDroneIdentifiers().forEach(this::addDrone);
+    setKnownMaster(store.getKnownMaster());
   }
 
   @Override
@@ -23,11 +25,6 @@ public class SlaveDroneStore implements DroneStore {
   @Override
   public void addDrone(DroneIdentifier identifier) {
     drones.add(identifier);
-  }
-
-  @Override
-  public void removeDrone(DroneIdentifier identifier) {
-    drones.remove(identifier);
   }
 
   @Override
@@ -49,13 +46,32 @@ public class SlaveDroneStore implements DroneStore {
 
   @Override
   public Optional<DroneData> getDroneData(DroneIdentifier identifier) {
-    Log.warn(String.format("A slave drone was asked data for drone #%d%n", identifier.getId()));
+    Log.warn("A slave drone was asked data for drone #%d%n", identifier.getId());
     return Optional.empty();
   }
 
   @Override
-  public Optional<DroneIdentifier> getAvailableDroneForOrder(Order order) {
-    Log.warn("A slave drone was asked to get an available drone for order #%d%n", order.getId());
-    return Optional.empty();
+  public void signalFailedCommunicationWithDrone(DroneIdentifier drone) {
+    Log.info("Slave store was signalled that drone %s is not reachable.", drone);
+    drones.remove(drone);
+    if (drone.equals(knownMaster)) {
+      knownMaster = null;
+    }
+  }
+
+  @Override
+  public void signalDroneWasAssignedOrder(DroneIdentifier drone, Order order) {
+    Log.warn("Slave store was signalled that drone %s was assigned order %s", drone, order);
+  }
+
+  @Override
+  public void setKnownMaster(DroneIdentifier drone) {
+    assert (drones.contains(drone));
+    knownMaster = drone;
+  }
+
+  @Override
+  public DroneIdentifier getKnownMaster() {
+    return knownMaster;
   }
 }

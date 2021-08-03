@@ -11,13 +11,17 @@ public interface DroneStore {
 
   void addDrone(DroneIdentifier identifier);
 
-  void removeDrone(DroneIdentifier identifier);
-
-  Optional<DroneIdentifier> getNextDroneInElectionRing(DroneIdentifier identifier);
-
   void handleDroneUpdateData(DroneIdentifier identifier, DroneData data);
 
   Optional<DroneData> getDroneData(DroneIdentifier identifier);
 
-  Optional<DroneIdentifier> getAvailableDroneForOrder(Order order);
+  Optional<DroneIdentifier> getNextDroneInElectionRing(DroneIdentifier identifier);
+
+  void signalFailedCommunicationWithDrone(DroneIdentifier drone);
+
+  void signalDroneWasAssignedOrder(DroneIdentifier drone, Order order);
+
+  void setKnownMaster(DroneIdentifier drone);
+
+  DroneIdentifier getKnownMaster();
 }

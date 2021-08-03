@@ -22,10 +22,12 @@ public class EnteringRingState implements DroneState {
   @Override
   public void start() {
     CityPoint startingPosition = drone.getData().getPosition();
+
     store.getAllDroneIdentifiers().parallelStream()
         .forEach(
             (destination) -> {
               if (destination.equals(drone.getIdentifier())) {
+                store.addDrone(destination);
                 return;
               }
 
@@ -38,6 +40,10 @@ public class EnteringRingState implements DroneState {
               Log.info(
                   "notifyDroneJoin from #%d -> #%d success. %s",
                   drone.getIdentifier().getId(), destination.getId(), response.get().toString());
+              store.addDrone(destination);
+              if (response.get().isMaster()) {
+                store.setKnownMaster(destination);
+              }
             });
   }
 
@@ -46,4 +52,9 @@ public class EnteringRingState implements DroneState {
 
   @Override
   public void shutdown() {}
+
+  @Override
+  public void onLowBattery() {
+    Log.info("Low battery detected");
+  }
 }

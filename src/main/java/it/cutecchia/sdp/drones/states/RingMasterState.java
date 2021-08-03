@@ -1,10 +1,13 @@
 package it.cutecchia.sdp.drones.states;
 
+import it.cutecchia.sdp.common.DroneData;
 import it.cutecchia.sdp.common.Log;
 import it.cutecchia.sdp.common.Order;
 import it.cutecchia.sdp.drones.Drone;
 import it.cutecchia.sdp.drones.DroneCommunicationClient;
+import it.cutecchia.sdp.drones.OrderAssigner;
 import it.cutecchia.sdp.drones.OrderSource;
+import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
 import it.cutecchia.sdp.drones.store.MasterDroneStore;
 
 public class RingMasterState implements DroneState, OrderSource.OrderListener {
@@ -12,6 +15,7 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
   private final DroneCommunicationClient communicationClient;
   private final MasterDroneStore store;
   private final OrderSource orderSource;
+  private final OrderAssigner orderAssigner;
 
   public RingMasterState(
       Drone drone,
@@ -22,17 +26,40 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
     this.communicationClient = communicationClient;
     this.store = store;
     this.orderSource = orderSource;
+    this.orderAssigner = new OrderAssigner(store, communicationClient);
   }
 
   @Override
   public void onOrderReceived(Order order) {
-    Log.info("Assigning order %s...", order);
+    Log.info("Received order %s", order);
+    orderAssigner.enqueueOrder(order);
+  }
+
+  @Override
+  public void onCompletedDeliveryNotification(CompletedDeliveryMessage message) {
+    Log.info("(RingMasterState): Order %s was completed", message.getOrder());
+    orderAssigner.notifyOrderCompleted(message.getOrder());
+    store.handleDroneUpdateData(
+        message.getDrone(),
+        new DroneData(message.getOrder().getDeliveryPoint(), message.getBatteryPercentage()));
+    // FIXME: Handle the statistics
   }
 
   @Override
   public void start() {
     orderSource.start(this);
-    communicationClient.broadcastDataRequest(store.getAllDroneIdentifiers());
+    store.getAllDroneIdentifiers().parallelStream()
+        .forEach(
+            (destination) -> {
+              /*
+              Optional<DroneData> data = communicationClient.requestData(destination);
+              if (!data.isPresent()) {
+                store.signalFailedCommunicationWithDrone(destination);
+                return;
+              }
+              store.addDrone(destination);
+              store.handleDroneUpdateData(destination, data.get());*/
+            });
   }
 
   @Override
@@ -43,6 +70,11 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
   @Override
   public void shutdown() {
     orderSource.stop();
+  }
+
+  @Override
+  public void onLowBattery() {
+    Log.info("Drone reached low battery");
   }
 
   @Override

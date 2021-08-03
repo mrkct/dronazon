@@ -15,10 +15,19 @@ message DroneIdentifierPacket {
   int32 port = 3;
 }
 
+message OrderPacket {
+  int32 id = 1;
+  CityPointPacket starting_point = 2;
+  CityPointPacket delivery_point = 3;
+}
+
 message DroneDataPacket {
   int32 battery_percentage = 1;
   CityPointPacket position = 2;
+  OrderPacket assigned_order = 3;
 }
+
+// Messages
 
 message DroneJoinMessage {
   DroneIdentifierPacket sender = 1;
@@ -30,26 +39,24 @@ message DroneJoinResponse {
   bool is_master = 2;
 }
 
-message DroneLeaveMessage {
-  DroneIdentifierPacket sender = 1;
-}
-
-message DroneLeaveResponse {
-  DroneIdentifierPacket sender = 1;
+message AssignOrderMessage {
+  OrderPacket order = 1;
 }
 
 message CompletedDeliveryMessage {
-  DroneIdentifierPacket sender = 1;
-  uint64 timestamp = 2;
-  double travelled_kms = 3;
-  double pollution = 4;
-  int32 battery_percentage = 5;
+  uint64 timestamp = 1;
+  DroneIdentifierPacket sender = 2;
+  OrderPacket completed_order = 3;
+
+  double travelled_kms = 4;
+  double pollution = 5;
+  int32 battery_percentage = 6;
 }
 
 service DroneService {
   // Used by all drones
   rpc NotifyDroneJoin(DroneJoinMessage) returns (DroneJoinResponse);
-  rpc NotifyDroneLeave(DroneLeaveMessage) returns (DroneLeaveResponse);
+  rpc AssignOrder(AssignOrderMessage) returns (Empty);
 
   // Used only on the master
   rpc NotifyCompletedDelivery(CompletedDeliveryMessage) returns (Empty);

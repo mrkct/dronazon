@@ -7,7 +7,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class PeriodicOrderGenerator extends OrderReceiver {
-  private long nextId = 0;
+  private int nextId = 0;
 
   private final Timer timer;
   private final long millisBetweenEachOrder;

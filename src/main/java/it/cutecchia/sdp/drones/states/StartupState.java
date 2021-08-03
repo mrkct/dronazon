@@ -18,6 +18,9 @@ public class StartupState implements DroneState {
   }
 
   @Override
+  public void onLowBattery() {}
+
+  @Override
   public void start() {
     try {
       DroneEnterResponse response = client.requestDroneToEnter(drone.getIdentifier());
