@@ -7,14 +7,14 @@ import it.cutecchia.sdp.common.DroneData;
 import it.cutecchia.sdp.common.DroneIdentifier;
 import org.junit.jupiter.api.Test;
 
-public class MasterDroneStoreTest {
+public class InMemoryDroneStoreTest {
   @Test
   public void simpleGetNextIdentifier() {
     DroneIdentifier a = new DroneIdentifier(1, "localhost", 0);
     DroneIdentifier b = new DroneIdentifier(2, "localhost", 0);
     DroneIdentifier c = new DroneIdentifier(3, "localhost", 0);
 
-    MasterDroneStore store = new MasterDroneStore();
+    InMemoryDroneStore store = new InMemoryDroneStore();
     store.addDrone(a);
     store.addDrone(b);
     store.addDrone(c);
@@ -28,7 +28,7 @@ public class MasterDroneStoreTest {
     DroneIdentifier b = new DroneIdentifier(2, "localhost", 0);
     DroneIdentifier c = new DroneIdentifier(3, "localhost", 0);
 
-    MasterDroneStore store = new MasterDroneStore();
+    InMemoryDroneStore store = new InMemoryDroneStore();
     store.addDrone(a);
     store.addDrone(b);
     store.addDrone(c);
@@ -40,7 +40,7 @@ public class MasterDroneStoreTest {
   public void onlyOneDrone() {
     DroneIdentifier a = new DroneIdentifier(1, "localhost", 0);
 
-    MasterDroneStore store = new MasterDroneStore();
+    InMemoryDroneStore store = new InMemoryDroneStore();
     store.addDrone(a);
 
     assertThat(store.getNextDroneInElectionRing(a)).contains(a);
@@ -50,7 +50,7 @@ public class MasterDroneStoreTest {
   public void noDrones() {
     DroneIdentifier a = new DroneIdentifier(1, "localhost", 0);
 
-    MasterDroneStore store = new MasterDroneStore();
+    InMemoryDroneStore store = new InMemoryDroneStore();
 
     assertThat(store.getNextDroneInElectionRing(a)).isEmpty();
   }
@@ -60,7 +60,7 @@ public class MasterDroneStoreTest {
     DroneIdentifier a = new DroneIdentifier(1, "localhost", 0);
     DroneData data = new DroneData(new CityPoint(2, 5), 75);
 
-    MasterDroneStore store = new MasterDroneStore();
+    InMemoryDroneStore store = new InMemoryDroneStore();
 
     store.addDrone(a);
     store.handleDroneUpdateData(a, data);

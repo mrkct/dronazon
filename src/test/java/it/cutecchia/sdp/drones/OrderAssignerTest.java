@@ -6,7 +6,7 @@ import it.cutecchia.sdp.common.CityPoint;
 import it.cutecchia.sdp.common.DroneData;
 import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.Order;
-import it.cutecchia.sdp.drones.store.MasterDroneStore;
+import it.cutecchia.sdp.drones.store.InMemoryDroneStore;
 import org.junit.jupiter.api.Test;
 
 public class OrderAssignerTest {
@@ -17,7 +17,7 @@ public class OrderAssignerTest {
     DroneIdentifier otherDroneId2 = new DroneIdentifier(2, "123", 123);
     DroneIdentifier otherDroneId3 = new DroneIdentifier(3, "123", 123);
 
-    MasterDroneStore store = new MasterDroneStore();
+    InMemoryDroneStore store = new InMemoryDroneStore();
     store.addDrone(closestDroneId);
     store.handleDroneUpdateData(closestDroneId, new DroneData(new CityPoint(2, 3)));
     store.addDrone(otherDroneId);
@@ -44,7 +44,7 @@ public class OrderAssignerTest {
     DroneIdentifier otherDroneId2 = new DroneIdentifier(2, "123", 123);
     DroneIdentifier otherDroneId3 = new DroneIdentifier(3, "123", 123);
 
-    MasterDroneStore store = new MasterDroneStore();
+    InMemoryDroneStore store = new InMemoryDroneStore();
     store.addDrone(highestBatteryDrone);
     store.handleDroneUpdateData(highestBatteryDrone, new DroneData(new CityPoint(2, 2), 80));
     store.addDrone(otherDroneId);
@@ -71,7 +71,7 @@ public class OrderAssignerTest {
     DroneIdentifier otherDroneId2 = new DroneIdentifier(2, "123", 123);
     DroneIdentifier otherDroneId3 = new DroneIdentifier(1, "123", 123);
 
-    MasterDroneStore store = new MasterDroneStore();
+    InMemoryDroneStore store = new InMemoryDroneStore();
     store.addDrone(highestIdDrone);
     store.handleDroneUpdateData(highestIdDrone, new DroneData(new CityPoint(2, 2), 80));
     store.addDrone(otherDroneId);

@@ -8,18 +8,18 @@ import it.cutecchia.sdp.drones.DroneCommunicationClient;
 import it.cutecchia.sdp.drones.OrderAssigner;
 import it.cutecchia.sdp.drones.OrderSource;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
-import it.cutecchia.sdp.drones.store.MasterDroneStore;
+import it.cutecchia.sdp.drones.store.DroneStore;
 
 public class RingMasterState implements DroneState, OrderSource.OrderListener {
   private final Drone thisDrone;
   private final DroneCommunicationClient communicationClient;
-  private final MasterDroneStore store;
+  private final DroneStore store;
   private final OrderSource orderSource;
   private final OrderAssigner orderAssigner;
 
   public RingMasterState(
       Drone drone,
-      MasterDroneStore store,
+      DroneStore store,
       DroneCommunicationClient communicationClient,
       OrderSource orderSource) {
     this.thisDrone = drone;

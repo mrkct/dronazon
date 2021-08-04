@@ -9,8 +9,7 @@ import it.cutecchia.sdp.drones.states.EnteringRingState;
 import it.cutecchia.sdp.drones.states.RingMasterState;
 import it.cutecchia.sdp.drones.states.StartupState;
 import it.cutecchia.sdp.drones.store.DroneStore;
-import it.cutecchia.sdp.drones.store.MasterDroneStore;
-import it.cutecchia.sdp.drones.store.SlaveDroneStore;
+import it.cutecchia.sdp.drones.store.InMemoryDroneStore;
 import java.io.IOException;
 import java.util.Set;
 
@@ -19,7 +18,7 @@ public class Drone implements DroneCommunicationServer {
   private final DroneIdentifier identifier;
   private final OrderSource orderSource;
   private final RpcDroneCommunicationMiddleware middleware;
-  private DroneStore store;
+  private final DroneStore store = new InMemoryDroneStore();
 
   private DroneData data;
   private DroneState currentState;
@@ -30,7 +29,6 @@ public class Drone implements DroneCommunicationServer {
     this.adminServerClient = adminServerClient;
     this.currentState = new StartupState(this, adminServerClient);
     this.middleware = new RpcDroneCommunicationMiddleware(identifier, this);
-    this.store = new SlaveDroneStore();
     this.orderSource = orderSource;
   }
 
@@ -62,16 +60,13 @@ public class Drone implements DroneCommunicationServer {
     Log.info("Drone %d# was accepted by the admin server", identifier.getId());
 
     data = new DroneData(position);
-    allDrones.forEach(drone -> store.addDrone(drone));
+    allDrones.forEach(store::addDrone);
 
     if (allDrones.size() == 1) {
-      MasterDroneStore masterDroneStore = new MasterDroneStore(store);
-      store = masterDroneStore;
       store.handleDroneUpdateData(identifier, data);
       store.setKnownMaster(identifier);
-      changeStateTo(new RingMasterState(this, masterDroneStore, middleware, orderSource));
+      changeStateTo(new RingMasterState(this, store, middleware, orderSource));
     } else {
-      store = new SlaveDroneStore(store);
       changeStateTo(new EnteringRingState(this, store, middleware));
     }
   }
