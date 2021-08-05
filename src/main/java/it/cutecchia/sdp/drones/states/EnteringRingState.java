@@ -32,7 +32,7 @@ public class EnteringRingState implements DroneState {
               }
 
               Optional<DroneJoinResponse> response =
-                  client.notifyDroneJoin(destination, drone.getIdentifier(), startingPosition);
+                  client.notifyDroneJoin(destination, startingPosition);
               if (!response.isPresent()) {
                 return;
               }

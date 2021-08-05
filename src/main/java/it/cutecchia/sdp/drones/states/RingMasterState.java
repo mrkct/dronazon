@@ -1,6 +1,7 @@
 package it.cutecchia.sdp.drones.states;
 
 import it.cutecchia.sdp.common.DroneData;
+import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.Log;
 import it.cutecchia.sdp.common.Order;
 import it.cutecchia.sdp.drones.Drone;
@@ -9,6 +10,9 @@ import it.cutecchia.sdp.drones.OrderAssigner;
 import it.cutecchia.sdp.drones.OrderSource;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
 import it.cutecchia.sdp.drones.store.DroneStore;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class RingMasterState implements DroneState, OrderSource.OrderListener {
   private final Drone thisDrone;
@@ -48,17 +52,21 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
   @Override
   public void start() {
     orderSource.start(this);
-    store.getAllDroneIdentifiers().parallelStream()
+    Log.info("Master is requesting data from every other drone");
+    Set<DroneIdentifier> drones = new TreeSet<>(store.getAllDroneIdentifiers());
+    drones.parallelStream()
         .forEach(
             (destination) -> {
-              /*
               Optional<DroneData> data = communicationClient.requestData(destination);
-              if (!data.isPresent()) {
+              Log.info(
+                  "requestData from %s -> %s",
+                  destination,
+                  data.map(droneData -> "success, " + droneData.toString()).orElse("failed"));
+              if (data.isPresent()) {
+                store.handleDroneUpdateData(destination, data.get());
+              } else {
                 store.signalFailedCommunicationWithDrone(destination);
-                return;
               }
-              store.addDrone(destination);
-              store.handleDroneUpdateData(destination, data.get());*/
             });
   }
 

@@ -2,10 +2,7 @@ package it.cutecchia.sdp.drones;
 
 import io.grpc.*;
 import io.grpc.stub.StreamObserver;
-import it.cutecchia.sdp.common.CityPoint;
-import it.cutecchia.sdp.common.DroneIdentifier;
-import it.cutecchia.sdp.common.Log;
-import it.cutecchia.sdp.common.Order;
+import it.cutecchia.sdp.common.*;
 import it.cutecchia.sdp.drones.grpc.DroneServiceGrpc;
 import it.cutecchia.sdp.drones.grpc.DroneServiceOuterClass;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
@@ -22,8 +19,10 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   private final Server rpcServer;
   private final DroneCommunicationServer droneServer;
   private final Map<DroneIdentifier, ManagedChannel> openChannels = new HashMap<>();
+  private final DroneIdentifier drone;
 
   public RpcDroneCommunicationMiddleware(DroneIdentifier drone, DroneCommunicationServer service) {
+    this.drone = drone;
     this.rpcServer = ServerBuilder.forPort(drone.getConnectionPort()).addService(this).build();
     this.droneServer = service;
   }
@@ -65,10 +64,10 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
 
   @Override
   public Optional<DroneJoinResponse> notifyDroneJoin(
-      DroneIdentifier destination, DroneIdentifier sender, CityPoint startingPosition) {
+      DroneIdentifier destination, CityPoint startingPosition) {
     DroneServiceOuterClass.DroneJoinMessage message =
         DroneServiceOuterClass.DroneJoinMessage.newBuilder()
-            .setSender(sender.toProto())
+            .setSender(drone.toProto())
             .setStartingPosition(startingPosition.toProto())
             .build();
     try {
@@ -78,7 +77,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     } catch (StatusRuntimeException e) {
       Log.error(
           "RPC Failed: notifyDroneJoin from #%d to #%d. Stack trace follows",
-          sender.getId(), destination.getId());
+          drone.getId(), destination.getId());
       e.printStackTrace();
     }
 
@@ -113,9 +112,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   @Override
   public boolean notifyCompletedDelivery(
       DroneIdentifier masterDrone, CompletedDeliveryMessage message) {
-    ManagedChannel channel = getManagedChannel(masterDrone);
-    DroneServiceGrpc.DroneServiceBlockingStub stub =
-        DroneServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3, TimeUnit.SECONDS);
+    DroneServiceGrpc.DroneServiceBlockingStub stub = getBlockingStub(masterDrone);
 
     try {
       stub.notifyCompletedDelivery(message.toProto());
@@ -134,6 +131,16 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     boolean succeeded = callback.trySending(master);
     assert (succeeded);
     callback.onSuccess();
+  }
+
+  @Override
+  public Optional<DroneData> requestData(DroneIdentifier drone) {
+    try {
+      return Optional.of(DroneData.fromProto(getBlockingStub(drone).requestData(empty())));
+    } catch (StatusRuntimeException e) {
+      Log.warn("Failed to request data from %s: %s", drone, e.getMessage());
+      return Optional.empty();
+    }
   }
 
   // The methods below this point are the gRpc service callbacks, you should NOT call these
@@ -159,7 +166,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     Order order = Order.fromProto(request.getOrder());
     droneServer.onOrderAssigned(order);
 
-    responseObserver.onNext(DroneServiceOuterClass.Empty.newBuilder().build());
+    responseObserver.onNext(empty());
     responseObserver.onCompleted();
   }
 
@@ -169,7 +176,20 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
       StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
     droneServer.onCompletedDeliveryNotification(CompletedDeliveryMessage.fromProto(request));
 
-    responseObserver.onNext(DroneServiceOuterClass.Empty.newBuilder().build());
+    responseObserver.onNext(empty());
     responseObserver.onCompleted();
+  }
+
+  @Override
+  public void requestData(
+      DroneServiceOuterClass.Empty request,
+      StreamObserver<DroneServiceOuterClass.DroneDataPacket> responseObserver) {
+    DroneData data = droneServer.onDataRequest();
+    responseObserver.onNext(data.toProto());
+    responseObserver.onCompleted();
+  }
+
+  private DroneServiceOuterClass.Empty empty() {
+    return DroneServiceOuterClass.Empty.newBuilder().build();
   }
 }

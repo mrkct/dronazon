@@ -1,5 +1,6 @@
 package it.cutecchia.sdp.common;
 
+import it.cutecchia.sdp.drones.grpc.DroneServiceOuterClass;
 import javax.xml.bind.annotation.XmlRootElement;
 
 @XmlRootElement
@@ -20,6 +21,26 @@ public class DroneData {
 
   public DroneData(CityPoint position) {
     this(position, 100);
+  }
+
+  public static DroneData fromProto(DroneServiceOuterClass.DroneDataPacket proto) {
+    return new DroneData(
+        CityPoint.fromProto(proto.getPosition()),
+        proto.getBatteryPercentage(),
+        proto.hasAssignedOrder() ? Order.fromProto(proto.getAssignedOrder()) : null);
+  }
+
+  public DroneServiceOuterClass.DroneDataPacket toProto() {
+    DroneServiceOuterClass.DroneDataPacket.Builder builder =
+        DroneServiceOuterClass.DroneDataPacket.newBuilder()
+            .setPosition(position.toProto())
+            .setBatteryPercentage(batteryPercentage);
+    if (assignedOrder != null) {
+      builder.setAssignedOrder(assignedOrder.toProto());
+    } else {
+      builder.clearAssignedOrder();
+    }
+    return builder.build();
   }
 
   public CityPoint getPosition() {

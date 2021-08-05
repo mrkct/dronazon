@@ -1,6 +1,7 @@
 package it.cutecchia.sdp.drones;
 
 import it.cutecchia.sdp.common.CityPoint;
+import it.cutecchia.sdp.common.DroneData;
 import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.Order;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
@@ -10,7 +11,7 @@ import java.util.Optional;
 
 public interface DroneCommunicationClient {
   Optional<DroneJoinResponse> notifyDroneJoin(
-      DroneIdentifier destination, DroneIdentifier sender, CityPoint startingPosition);
+      DroneIdentifier destination, CityPoint startingPosition);
 
   interface AssignOrderCallback {
     void onFailure();
@@ -29,4 +30,6 @@ public interface DroneCommunicationClient {
   }
 
   void deliverToMaster(DroneStore store, DeliverToMasterCallback callback);
+
+  Optional<DroneData> requestData(DroneIdentifier drone);
 }

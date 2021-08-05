@@ -53,10 +53,16 @@ message CompletedDeliveryMessage {
   int32 battery_percentage = 6;
 }
 
+message DataRequestResponse {
+  DroneIdentifierPacket drone = 1;
+  DroneDataPacket data = 2;
+}
+
 service DroneService {
   // Used by all drones
   rpc NotifyDroneJoin(DroneJoinMessage) returns (DroneJoinResponse);
   rpc AssignOrder(AssignOrderMessage) returns (Empty);
+  rpc RequestData(Empty) returns (DroneDataPacket);
 
   // Used only on the master
   rpc NotifyCompletedDelivery(CompletedDeliveryMessage) returns (Empty);

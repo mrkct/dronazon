@@ -1,6 +1,7 @@
 package it.cutecchia.sdp.drones;
 
 import it.cutecchia.sdp.common.CityPoint;
+import it.cutecchia.sdp.common.DroneData;
 import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.Order;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
@@ -13,6 +14,8 @@ public interface DroneCommunicationServer {
   void onOrderAssigned(Order order);
 
   void onCompletedDeliveryNotification(CompletedDeliveryMessage message);
+
+  DroneData onDataRequest();
 
   // Drone.DroneJoinResponse onDroneJoin(Drone.DroneJoinMessage message);
 

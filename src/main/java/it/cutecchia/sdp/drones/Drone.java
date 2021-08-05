@@ -131,4 +131,9 @@ public class Drone implements DroneCommunicationServer {
   public void onCompletedDeliveryNotification(CompletedDeliveryMessage message) {
     currentState.onCompletedDeliveryNotification(message);
   }
+
+  @Override
+  public DroneData onDataRequest() {
+    return data;
+  }
 }
