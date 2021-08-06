@@ -3,12 +3,14 @@ package it.cutecchia.sdp.common;
 import javax.xml.bind.annotation.XmlRootElement;
 
 @XmlRootElement
-public class FleetStats {
-  private final long timestamp;
-  private final double averageDeliveries;
-  private final double averageKmTravelled;
-  private final double averagePollution;
-  private final double averageBatteryLevel;
+public class FleetStats implements Comparable<FleetStats> {
+  private long timestamp;
+  private double averageDeliveries;
+  private double averageKmTravelled;
+  private double averagePollution;
+  private double averageBatteryLevel;
+
+  public FleetStats() {}
 
   public FleetStats(
       long timestamp,
@@ -21,6 +23,10 @@ public class FleetStats {
     this.averageKmTravelled = averageKmTravelled;
     this.averagePollution = averagePollution;
     this.averageBatteryLevel = averageBatteryLevel;
+  }
+
+  public long getTimestamp() {
+    return timestamp;
   }
 
   public double getAverageDeliveries() {
@@ -37,5 +43,17 @@ public class FleetStats {
 
   public double getAverageBatteryLevel() {
     return averageBatteryLevel;
+  }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "[Ts: %d, Deliveries: %f, Kms: %f, Pollution: %f, Battery: %f]",
+        timestamp, averageDeliveries, averageKmTravelled, averagePollution, averageBatteryLevel);
+  }
+
+  @Override
+  public int compareTo(FleetStats o) {
+    return Long.compare(timestamp, o.timestamp);
   }
 }
