@@ -1,13 +1,11 @@
 package it.cutecchia.sdp.drones.states;
 
+import it.cutecchia.sdp.admin.server.AdminServerClient;
 import it.cutecchia.sdp.common.DroneData;
 import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.Log;
 import it.cutecchia.sdp.common.Order;
-import it.cutecchia.sdp.drones.Drone;
-import it.cutecchia.sdp.drones.DroneCommunicationClient;
-import it.cutecchia.sdp.drones.OrderAssigner;
-import it.cutecchia.sdp.drones.OrderSource;
+import it.cutecchia.sdp.drones.*;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
 import it.cutecchia.sdp.drones.store.DroneStore;
 import java.util.Optional;
@@ -20,17 +18,20 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
   private final DroneStore store;
   private final OrderSource orderSource;
   private final OrderAssigner orderAssigner;
+  private final FleetStatsTracker statsTracker;
 
   public RingMasterState(
       Drone drone,
       DroneStore store,
       DroneCommunicationClient communicationClient,
+      AdminServerClient client,
       OrderSource orderSource) {
     this.thisDrone = drone;
     this.communicationClient = communicationClient;
     this.store = store;
     this.orderSource = orderSource;
     this.orderAssigner = new OrderAssigner(store, communicationClient);
+    this.statsTracker = new FleetStatsTracker(store, client);
   }
 
   @Override
@@ -46,7 +47,7 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
     store.handleDroneUpdateData(
         message.getDrone(),
         new DroneData(message.getOrder().getDeliveryPoint(), message.getBatteryPercentage()));
-    // FIXME: Handle the statistics
+    statsTracker.handleCompletedDeliveryStats(message.getPollution(), message.getTravelledKms());
   }
 
   @Override
@@ -68,16 +69,19 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
                 store.signalFailedCommunicationWithDrone(destination);
               }
             });
+    statsTracker.start();
   }
 
   @Override
   public void teardown() {
     orderSource.stop();
+    statsTracker.shutdown();
   }
 
   @Override
   public void shutdown() {
     orderSource.stop();
+    statsTracker.shutdown();
   }
 
   @Override

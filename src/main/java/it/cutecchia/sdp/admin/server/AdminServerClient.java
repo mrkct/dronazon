@@ -8,6 +8,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import it.cutecchia.sdp.admin.server.messages.DroneEnterRequest;
 import it.cutecchia.sdp.admin.server.messages.DroneEnterResponse;
 import it.cutecchia.sdp.common.DroneIdentifier;
+import it.cutecchia.sdp.common.FleetStats;
 import it.cutecchia.sdp.common.Log;
 import javax.ws.rs.core.MediaType;
 
@@ -49,5 +50,15 @@ public class AdminServerClient {
       }
       throw e;
     }
+  }
+
+  public void sendFleetStats(FleetStats stats) {
+    Log.info("Sending stats to admin server...");
+
+    WebResource resource = client.resource(getServerEndpoint("/stats"));
+
+    // FIXME: If I return the object directly on the server the json is just '{}'
+    Gson gson = new Gson();
+    resource.type(MediaType.APPLICATION_JSON).post(gson.toJson(stats));
   }
 }

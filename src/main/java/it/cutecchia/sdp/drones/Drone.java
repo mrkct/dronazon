@@ -19,6 +19,7 @@ public class Drone implements DroneCommunicationServer {
   private final OrderSource orderSource;
   private final RpcDroneCommunicationMiddleware middleware;
   private final DroneStore store = new InMemoryDroneStore();
+  private final PollutionTracker pollutionTracker = new PollutionTracker();
 
   private DroneData data;
   private DroneState currentState;
@@ -41,19 +42,21 @@ public class Drone implements DroneCommunicationServer {
   }
 
   public void start() throws IOException {
-    this.middleware.startRpcServer();
-    this.currentState.start();
+    middleware.startRpcServer();
+    currentState.start();
+    pollutionTracker.startTracking();
   }
 
   public void shutdown() {
-    this.middleware.shutdownRpcServer();
-    this.currentState.shutdown();
+    middleware.shutdownRpcServer();
+    currentState.shutdown();
+    pollutionTracker.stopTracking();
   }
 
   public void changeStateTo(DroneState newState) {
-    this.currentState.teardown();
-    this.currentState = newState;
-    this.currentState.start();
+    currentState.teardown();
+    currentState = newState;
+    currentState.start();
   }
 
   public void onAdminServerAcceptance(CityPoint position, Set<DroneIdentifier> allDrones) {
@@ -65,7 +68,7 @@ public class Drone implements DroneCommunicationServer {
     if (allDrones.size() == 1) {
       store.handleDroneUpdateData(identifier, data);
       store.setKnownMaster(identifier);
-      changeStateTo(new RingMasterState(this, store, middleware, orderSource));
+      changeStateTo(new RingMasterState(this, store, middleware, adminServerClient, orderSource));
     } else {
       changeStateTo(new EnteringRingState(this, store, middleware));
     }
@@ -94,7 +97,6 @@ public class Drone implements DroneCommunicationServer {
                   "%d: Delivered order %s. Sending confirmation message...",
                   System.currentTimeMillis(), order);
 
-              // FIXME: Calculate pollution level and other statistics
               CompletedDeliveryMessage message =
                   new CompletedDeliveryMessage(
                       System.currentTimeMillis(),
@@ -102,8 +104,9 @@ public class Drone implements DroneCommunicationServer {
                       order,
                       data.getPosition().distanceTo(order.getStartPoint())
                           + order.getStartPoint().distanceTo(order.getDeliveryPoint()),
-                      123456,
+                      pollutionTracker.getAverageMeasurementsValue(),
                       getData().getBatteryPercentage() - 10);
+              pollutionTracker.clearAllMeasurements();
               middleware.deliverToMaster(
                   store,
                   new DroneCommunicationClient.DeliverToMasterCallback() {
