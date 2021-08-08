@@ -31,7 +31,7 @@ public class FleetStatsTracker extends Thread {
           @Override
           public void run() {
             FleetStats stats = calculateFleetStats();
-            Log.warn("Sending stats to admin server %s", stats);
+            Log.notice("Sending stats to admin server %s", stats);
             client.sendFleetStats(stats);
             resetFleetStats();
           }
@@ -61,10 +61,13 @@ public class FleetStatsTracker extends Thread {
       averageBatteryLevel += data.get().getBatteryPercentage();
       dronesWithAvailableData++;
     }
+
+    assert dronesWithAvailableData > 0;
     return averageBatteryLevel / dronesWithAvailableData;
   }
 
   private double calculateAverageCompletedDeliveries() {
+    assert store.getAllDroneIdentifiers().size() > 0;
     return (double) deliveriesSinceLastUpdate / store.getAllDroneIdentifiers().size();
   }
 
@@ -77,6 +80,7 @@ public class FleetStatsTracker extends Thread {
   }
 
   private double calculateAverageTravelledKms() {
+    assert store.getAllDroneIdentifiers().size() > 0;
     return kmsSinceLastUpdate / store.getAllDroneIdentifiers().size();
   }
 
