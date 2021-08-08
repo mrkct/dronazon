@@ -16,6 +16,13 @@ import javax.ws.rs.core.Response;
 @Path("/drones")
 public class DronesResource {
 
+  @GET
+  @Produces("application/json")
+  public Response getDrones() {
+    DronesStore store = InMemoryDronesStore.getInstance();
+    return Response.ok(store.getRegisteredDrones()).type(MediaType.APPLICATION_JSON).build();
+  }
+
   @POST
   @Path("{droneId}")
   @Consumes("application/json")
