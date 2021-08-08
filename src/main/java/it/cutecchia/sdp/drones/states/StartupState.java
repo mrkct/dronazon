@@ -18,7 +18,14 @@ public class StartupState implements DroneState {
   }
 
   @Override
-  public void onLowBattery() {}
+  public void onLowBattery() {
+    throw new IllegalStateException();
+  }
+
+  @Override
+  public void afterCompletingAnOrder() {
+    throw new IllegalStateException();
+  }
 
   @Override
   public void start() {
