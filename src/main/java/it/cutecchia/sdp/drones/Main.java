@@ -2,6 +2,7 @@ package it.cutecchia.sdp.drones;
 
 import it.cutecchia.sdp.admin.server.AdminServerClient;
 import it.cutecchia.sdp.common.DroneIdentifier;
+import it.cutecchia.sdp.common.Log;
 import java.io.IOException;
 import java.util.Random;
 import java.util.Scanner;
@@ -75,7 +76,7 @@ public class Main {
       args = new Args();
     }
 
-    System.out.printf(
+    Log.notice(
         "Starting drone #%d, listening on port %d and communicating with %s:%d...%n",
         args.getDroneId(),
         args.getRpcListenPort(),
