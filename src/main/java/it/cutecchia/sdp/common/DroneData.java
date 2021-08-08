@@ -56,13 +56,8 @@ public class DroneData {
   }
 
   public DroneData withOrder(Order order) {
-    assert (this.assignedOrder == null);
+    assert this.assignedOrder == null;
     return new DroneData(position, batteryPercentage, order);
-  }
-
-  public DroneData withoutOrder() {
-    assert (this.assignedOrder != null);
-    return new DroneData(position, batteryPercentage, null);
   }
 
   public int getBatteryPercentage() {
