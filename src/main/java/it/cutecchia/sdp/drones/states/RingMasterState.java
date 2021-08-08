@@ -20,6 +20,8 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
   private final OrderAssigner orderAssigner;
   private final FleetStatsTracker statsTracker;
 
+  private boolean shutdownInitiated = false;
+
   public RingMasterState(
       Drone drone,
       DroneStore store,
@@ -42,18 +44,18 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
 
   @Override
   public void onCompletedDeliveryNotification(CompletedDeliveryMessage message) {
-    Log.info("(RingMasterState): Order %s was completed", message.getOrder());
-    orderAssigner.notifyOrderCompleted(message.getOrder());
+    Log.info("Order %s was completed", message.getOrder());
     store.handleDroneUpdateData(
         message.getDrone(),
         new DroneData(message.getOrder().getDeliveryPoint(), message.getBatteryPercentage()));
+    orderAssigner.notifyOrderCompleted(message.getOrder());
     statsTracker.handleCompletedDeliveryStats(message.getPollution(), message.getTravelledKms());
   }
 
   @Override
   public void start() {
     orderSource.start(this);
-    Log.info("Master is requesting data from every other drone");
+    Log.notice("Master is requesting data from every other drone");
     Set<DroneIdentifier> drones = new TreeSet<>(store.getAllDroneIdentifiers());
     drones.parallelStream()
         .forEach(
@@ -80,13 +82,21 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
 
   @Override
   public void shutdown() {
-    orderSource.stop();
-    statsTracker.shutdown();
+    shutdownInitiated = true;
+  }
+
+  @Override
+  public void afterCompletingAnOrder() {
+    if (shutdownInitiated) {
+      orderSource.stop();
+      statsTracker.shutdown();
+    }
   }
 
   @Override
   public void onLowBattery() {
     Log.info("Drone reached low battery");
+    // shutdown();
   }
 
   @Override

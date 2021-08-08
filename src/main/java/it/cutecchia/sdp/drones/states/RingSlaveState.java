@@ -1,5 +1,6 @@
 package it.cutecchia.sdp.drones.states;
 
+import it.cutecchia.sdp.admin.server.AdminServerClient;
 import it.cutecchia.sdp.common.CityPoint;
 import it.cutecchia.sdp.common.Log;
 import it.cutecchia.sdp.drones.Drone;
@@ -8,15 +9,22 @@ import it.cutecchia.sdp.drones.responses.DroneJoinResponse;
 import it.cutecchia.sdp.drones.store.DroneStore;
 import java.util.Optional;
 
-public class EnteringRingState implements DroneState {
+public class RingSlaveState implements DroneState {
   private final Drone drone;
   private final DroneStore store;
-  private final DroneCommunicationClient client;
+  private final DroneCommunicationClient droneClient;
+  private final AdminServerClient adminClient;
+  private boolean shutdownInitiated = false;
 
-  public EnteringRingState(Drone drone, DroneStore store, DroneCommunicationClient client) {
+  public RingSlaveState(
+      Drone drone,
+      DroneStore store,
+      DroneCommunicationClient droneClient,
+      AdminServerClient adminClient) {
     this.drone = drone;
     this.store = store;
-    this.client = client;
+    this.droneClient = droneClient;
+    this.adminClient = adminClient;
   }
 
   @Override
@@ -32,7 +40,7 @@ public class EnteringRingState implements DroneState {
               }
 
               Optional<DroneJoinResponse> response =
-                  client.notifyDroneJoin(destination, startingPosition);
+                  droneClient.notifyDroneJoin(destination, startingPosition);
               if (!response.isPresent()) {
                 return;
               }
@@ -51,10 +59,33 @@ public class EnteringRingState implements DroneState {
   public void teardown() {}
 
   @Override
-  public void shutdown() {}
+  public void shutdown() {
+    Log.notice("Initiated shutdown procedure (slave)");
+    shutdownInitiated = true;
+    synchronized (drone) {
+      if (!drone.isDeliveringOrder()) {
+        Log.notice("Drone is not currently delivering so I'm shutting down");
+        forceShutdown();
+      }
+    }
+  }
+
+  private void forceShutdown() {
+    Log.notice("Force Shutdown");
+    droneClient.shutdownAllChannels();
+    adminClient.requestDroneExit(drone.getIdentifier());
+    System.exit(0);
+  }
+
+  @Override
+  public void afterCompletingAnOrder() {
+    if (shutdownInitiated) {
+      forceShutdown();
+    }
+  }
 
   @Override
   public void onLowBattery() {
-    Log.info("Low battery detected");
+    shutdown();
   }
 }

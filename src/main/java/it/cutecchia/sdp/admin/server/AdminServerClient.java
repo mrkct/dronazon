@@ -61,4 +61,6 @@ public class AdminServerClient {
     Gson gson = new Gson();
     resource.type(MediaType.APPLICATION_JSON).post(gson.toJson(stats));
   }
+
+  public void requestDroneExit(DroneIdentifier quittingDrone) {}
 }

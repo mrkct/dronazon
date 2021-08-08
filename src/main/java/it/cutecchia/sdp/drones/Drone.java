@@ -5,8 +5,8 @@ import it.cutecchia.sdp.common.*;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
 import it.cutecchia.sdp.drones.responses.DroneJoinResponse;
 import it.cutecchia.sdp.drones.states.DroneState;
-import it.cutecchia.sdp.drones.states.EnteringRingState;
 import it.cutecchia.sdp.drones.states.RingMasterState;
+import it.cutecchia.sdp.drones.states.RingSlaveState;
 import it.cutecchia.sdp.drones.states.StartupState;
 import it.cutecchia.sdp.drones.store.DroneStore;
 import it.cutecchia.sdp.drones.store.InMemoryDroneStore;
@@ -23,6 +23,7 @@ public class Drone implements DroneCommunicationServer {
 
   private DroneData data;
   private DroneState currentState;
+  private volatile boolean deliveringOrder = false;
 
   public Drone(
       DroneIdentifier identifier, OrderSource orderSource, AdminServerClient adminServerClient) {
@@ -41,6 +42,10 @@ public class Drone implements DroneCommunicationServer {
     return data;
   }
 
+  public boolean isDeliveringOrder() {
+    return deliveringOrder;
+  }
+
   public void start() throws IOException {
     middleware.startRpcServer();
     currentState.start();
@@ -48,9 +53,7 @@ public class Drone implements DroneCommunicationServer {
   }
 
   public void shutdown() {
-    middleware.shutdownRpcServer();
     currentState.shutdown();
-    pollutionTracker.stopTracking();
   }
 
   public void changeStateTo(DroneState newState) {
@@ -60,7 +63,7 @@ public class Drone implements DroneCommunicationServer {
   }
 
   public void onAdminServerAcceptance(CityPoint position, Set<DroneIdentifier> allDrones) {
-    Log.info("Drone %d# was accepted by the admin server", identifier.getId());
+    Log.notice("Drone %d# was accepted by the admin server", identifier.getId());
 
     data = new DroneData(position);
     allDrones.forEach(store::addDrone);
@@ -70,7 +73,7 @@ public class Drone implements DroneCommunicationServer {
       store.setKnownMaster(identifier);
       changeStateTo(new RingMasterState(this, store, middleware, adminServerClient, orderSource));
     } else {
-      changeStateTo(new EnteringRingState(this, store, middleware));
+      changeStateTo(new RingSlaveState(this, store, middleware, adminServerClient));
     }
   }
 
@@ -78,6 +81,7 @@ public class Drone implements DroneCommunicationServer {
   public DroneJoinResponse onDroneJoin(DroneIdentifier identifier, CityPoint startingPosition) {
     store.addDrone(identifier);
     store.handleDroneUpdateData(identifier, new DroneData(startingPosition));
+    Log.notice("A new drone (#%d) joined the ring at %s", identifier.getId(), startingPosition);
 
     return new DroneJoinResponse(getIdentifier(), currentState.isMaster());
   }
@@ -85,8 +89,14 @@ public class Drone implements DroneCommunicationServer {
   @Override
   public void onOrderAssigned(Order order) {
     Log.info("%d: I was assigned order %s. Delivering...", System.currentTimeMillis(), order);
+    assert !deliveringOrder;
     new Thread(
             () -> {
+              // FIXME: Why?
+              synchronized (this) {
+                deliveringOrder = true;
+              }
+
               try {
                 Thread.sleep(5 * 1000);
               } catch (InterruptedException e) {
@@ -106,26 +116,19 @@ public class Drone implements DroneCommunicationServer {
                           + order.getStartPoint().distanceTo(order.getDeliveryPoint()),
                       pollutionTracker.getAverageMeasurementsValue(),
                       getData().getBatteryPercentage() - 10);
-              pollutionTracker.clearAllMeasurements();
-              middleware.deliverToMaster(
-                  store,
-                  new DroneCommunicationClient.DeliverToMasterCallback() {
-                    @Override
-                    public boolean trySending(DroneIdentifier master) {
-                      return middleware.notifyCompletedDelivery(master, message);
-                    }
 
-                    @Override
-                    public void onSuccess() {
-                      Log.info("Successfully notified completed delivery of order %s", order);
-                      data =
-                          new DroneData(order.getDeliveryPoint(), data.getBatteryPercentage() - 10);
-                      Log.info("New drone data: %s", data);
-                      if (data.getBatteryPercentage() < 15) {
-                        currentState.onLowBattery();
-                      }
-                    }
-                  });
+              pollutionTracker.clearAllMeasurements();
+              deliveringOrder = false;
+
+              data = new DroneData(order.getDeliveryPoint(), data.getBatteryPercentage() - 10);
+
+              middleware.deliverToMaster(
+                  store, (master) -> middleware.notifyCompletedDelivery(master, message));
+
+              if (data.getBatteryPercentage() < 15) {
+                currentState.onLowBattery();
+              }
+              currentState.afterCompletingAnOrder();
             })
         .start();
   }

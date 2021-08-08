@@ -21,6 +21,12 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   private final Map<DroneIdentifier, ManagedChannel> openChannels = new HashMap<>();
   private final DroneIdentifier drone;
 
+  /**
+   * A middleware between a drone and other drones in the network based on gRpc.
+   *
+   * @param drone: The drone that will be considered as the sender/receiver of all requests
+   * @param service: An object that will be forwarded each request that is made to this drone
+   */
   public RpcDroneCommunicationMiddleware(DroneIdentifier drone, DroneCommunicationServer service) {
     this.drone = drone;
     this.rpcServer = ServerBuilder.forPort(drone.getConnectionPort()).addService(this).build();
@@ -29,10 +35,6 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
 
   public void startRpcServer() throws IOException {
     rpcServer.start();
-  }
-
-  public void shutdownRpcServer() {
-    rpcServer.shutdown();
   }
 
   private ManagedChannel getManagedChannel(DroneIdentifier drone) {
@@ -62,6 +64,15 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
 
   // The methods below this point are what a drone should call to do the operation
 
+  /**
+   * Notify another drone that this drone (the one passed in the constructor) has just joined the
+   * system. This is blocking
+   *
+   * @param destination The drone you want to notify
+   * @param startingPosition The position where the new drone is currently at
+   * @return The drone response if the drone was reachable, an empty optional if the drone couldn't
+   *     be reached
+   */
   @Override
   public Optional<DroneJoinResponse> notifyDroneJoin(
       DroneIdentifier destination, CityPoint startingPosition) {
@@ -84,31 +95,57 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     return Optional.empty();
   }
 
+  /**
+   * Assign an order to a drone, requesting that it delivers that order. This method should only be
+   * used by the master since it is the only one with the authority to assign orders. This is not
+   * blocking
+   *
+   * @param order The order you want to assign
+   * @param drone The drone you would like to deliver the order
+   * @param callback A callback for when the drone has accepted to deliver this order or when the
+   *     drone was not reachable
+   */
   @Override
   public void assignOrder(Order order, DroneIdentifier drone, AssignOrderCallback callback) {
     DroneServiceOuterClass.AssignOrderMessage message =
         DroneServiceOuterClass.AssignOrderMessage.newBuilder().setOrder(order.toProto()).build();
-    getAsyncStub(drone)
-        .assignOrder(
-            message,
-            new StreamObserver<DroneServiceOuterClass.Empty>() {
-              @Override
-              public void onNext(DroneServiceOuterClass.Empty value) {
-                callback.onOrderAccepted();
-              }
+    Context.current()
+        .fork()
+        .run(
+            () -> {
+              getAsyncStub(drone)
+                  .assignOrder(
+                      message,
+                      new StreamObserver<DroneServiceOuterClass.Empty>() {
+                        @Override
+                        public void onNext(DroneServiceOuterClass.Empty value) {
+                          callback.onOrderAccepted();
+                        }
 
-              @Override
-              public void onError(Throwable t) {
-                Log.error("Failed to assign order due to: %s", t.getMessage());
-                t.printStackTrace();
-                callback.onFailure();
-              }
+                        @Override
+                        public void onError(Throwable t) {
+                          Log.warn(
+                              "Failed to assign order with context %s due to: %s",
+                              Context.current(), t.getMessage());
+                          // t.printStackTrace();
+                          callback.onFailure();
+                        }
 
-              @Override
-              public void onCompleted() {}
+                        @Override
+                        public void onCompleted() {}
+                      });
             });
   }
 
+  /**
+   * Notify the master drone that this drone has completed delivering the previously assigned order.
+   * This also sends updated data about this drone. This is blocking.
+   *
+   * @param masterDrone The master drone to whom the notification message will be sent
+   * @param message The message that will be sent
+   * @return true if the communication with the master drone succeeded, false if the master drone
+   *     was not reachable
+   */
   @Override
   public boolean notifyCompletedDelivery(
       DroneIdentifier masterDrone, CompletedDeliveryMessage message) {
@@ -124,15 +161,32 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     }
   }
 
+  /**
+   * Attempt to the deliver a message to the master drone. If the drone is unreachable start an
+   * election and attempt to send the message to the new master and repeat attempting until a
+   * reachable master is elected. This is blocking.
+   *
+   * @param store The drone store from which the master will be taken. If an election has to occur
+   *     to deliver the message to the master the store will be updated with the new master and each
+   *     failed communication will be notified to the store
+   * @param callback A function that will send the message to the master and return true if the
+   *     communication succeeded, false if the communication failed.
+   */
   @Override
   public void deliverToMaster(DroneStore store, DeliverToMasterCallback callback) {
     DroneIdentifier master = store.getKnownMaster();
-    assert (master != null);
+    assert master != null;
     boolean succeeded = callback.trySending(master);
-    assert (succeeded);
-    callback.onSuccess();
+    assert succeeded;
   }
 
+  /**
+   * Request a drone's data. This is blocking.
+   *
+   * @param drone The drone to which request the data
+   * @return The drone's data if the communication is successful, empty if the drone couldn't be
+   *     reached
+   */
   @Override
   public Optional<DroneData> requestData(DroneIdentifier drone) {
     try {
@@ -143,6 +197,16 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     }
   }
 
+  @Override
+  public synchronized void shutdownAllChannels() {
+    Log.notice("shutdownAllChannels");
+    for (ManagedChannel channel : openChannels.values()) {
+      channel.shutdownNow();
+    }
+    openChannels.clear();
+    rpcServer.shutdown();
+  }
+
   // The methods below this point are the gRpc service callbacks, you should NOT call these
   @Override
   public void notifyDroneJoin(
@@ -151,7 +215,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
 
     DroneIdentifier sender = DroneIdentifier.fromProto(request.getSender());
     CityPoint startingPosition = CityPoint.fromProto(request.getStartingPosition());
-    Log.info("Received a request to join the ring from drone #%d", sender.getId());
+    Log.notice("Received a request to join the ring from drone #%d", sender.getId());
 
     DroneJoinResponse response = droneServer.onDroneJoin(sender, startingPosition);
 
@@ -164,10 +228,10 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
       DroneServiceOuterClass.AssignOrderMessage request,
       StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
     Order order = Order.fromProto(request.getOrder());
-    droneServer.onOrderAssigned(order);
-
     responseObserver.onNext(empty());
     responseObserver.onCompleted();
+
+    Context.current().fork().run(() -> droneServer.onOrderAssigned(order));
   }
 
   @Override

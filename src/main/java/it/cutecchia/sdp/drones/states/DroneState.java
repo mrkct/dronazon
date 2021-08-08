@@ -18,6 +18,8 @@ public interface DroneState {
         message.getOrder(), message.getDrone());
   }
 
+  void afterCompletingAnOrder();
+
   default boolean isMaster() {
     return false;
   }

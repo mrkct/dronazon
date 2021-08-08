@@ -25,11 +25,11 @@ public interface DroneCommunicationClient {
 
   interface DeliverToMasterCallback {
     boolean trySending(DroneIdentifier master);
-
-    void onSuccess();
   }
 
   void deliverToMaster(DroneStore store, DeliverToMasterCallback callback);
 
   Optional<DroneData> requestData(DroneIdentifier drone);
+
+  void shutdownAllChannels();
 }
