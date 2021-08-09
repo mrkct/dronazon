@@ -5,12 +5,9 @@ import java.util.*;
 import javax.annotation.Nonnull;
 
 public class InMemoryDronesStore implements DronesStore {
-  private static DronesStore instance = null;
+  private static final InMemoryDronesStore instance = new InMemoryDronesStore();
 
-  public static DronesStore getInstance() {
-    if (instance == null) {
-      instance = new InMemoryDronesStore();
-    }
+  public static InMemoryDronesStore getInstance() {
     return instance;
   }
 
@@ -39,5 +36,10 @@ public class InMemoryDronesStore implements DronesStore {
   @Override
   public synchronized Set<DroneIdentifier> getRegisteredDrones() {
     return new HashSet<>(drones);
+  }
+
+  @Override
+  public synchronized void clear() {
+    drones.clear();
   }
 }

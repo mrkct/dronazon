@@ -52,6 +52,12 @@ public class AdminServerClient {
     }
   }
 
+  public void requestDroneExit(DroneIdentifier quittingDrone) {
+    WebResource resource =
+        client.resource(getServerEndpoint(String.format("/drones/%d", quittingDrone.getId())));
+    resource.delete();
+  }
+
   public void sendFleetStats(FleetStats stats) {
     Log.info("Sending stats to admin server...");
 
@@ -61,6 +67,4 @@ public class AdminServerClient {
     Gson gson = new Gson();
     resource.type(MediaType.APPLICATION_JSON).post(gson.toJson(stats));
   }
-
-  public void requestDroneExit(DroneIdentifier quittingDrone) {}
 }

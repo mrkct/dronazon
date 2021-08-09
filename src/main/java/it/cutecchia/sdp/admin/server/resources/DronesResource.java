@@ -47,4 +47,16 @@ public class DronesResource {
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
     }
   }
+
+  @DELETE
+  @Path("{droneId}")
+  public Response removeDrone(@PathParam("droneId") int droneId) {
+    DronesStore store = InMemoryDronesStore.getInstance();
+    try {
+      store.removeDroneById(droneId);
+      return Response.ok().build();
+    } catch (DronesStore.DroneIdNotFound ignored) {
+      return Response.status(Response.Status.BAD_REQUEST).build();
+    }
+  }
 }

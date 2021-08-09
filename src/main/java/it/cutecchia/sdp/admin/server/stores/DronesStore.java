@@ -13,4 +13,6 @@ public interface DronesStore {
   void removeDroneById(int droneId) throws DroneIdNotFound;
 
   Set<DroneIdentifier> getRegisteredDrones();
+
+  void clear();
 }
