@@ -20,15 +20,35 @@ public class OrderAssigner {
     this.communicationClient = communicationClient;
   }
 
+  public boolean areTherePendingOrders() {
+    return !pendingOrders.isEmpty();
+  }
+
+  private void attemptAssigningOrders() {
+    new Thread(
+            () -> {
+              assignAllPossibleOrders();
+              if (noPendingOrdersCallback != null && !areTherePendingOrders()) {
+                noPendingOrdersCallback.run();
+              }
+            })
+        .start();
+  }
+
   public void enqueueOrder(Order order) {
     synchronized (pendingOrders) {
       pendingOrders.add(order);
     }
-    assignAllPossibleOrders();
+
+    attemptAssigningOrders();
   }
 
-  public void notifyOrderCompleted(Order order) {
-    assignAllPossibleOrders();
+  public void notifyOrderCompleted(Order ignored) {
+    attemptAssigningOrders();
+  }
+
+  public void notifyNewDroneJoined() {
+    attemptAssigningOrders();
   }
 
   private DroneIdentifier findBestDroneForOrder(Set<DroneIdentifier> drones, Order order) {
@@ -72,11 +92,12 @@ public class OrderAssigner {
             id -> {
               Optional<DroneData> data = dronesStore.getDroneData(id);
               Log.info("\t#%d -> %s", id.getId(), data.orElse(null));
-              return data.isPresent() && data.get().getAssignedOrder() == null;
+              return data.isPresent() && data.get().isAvailableForDeliveries();
             })
         .collect(Collectors.toSet());
   }
 
+  /** Assign all possible orders and wait for the drones to reply or timeout. */
   private synchronized void assignAllPossibleOrders() {
     Log.info("OrderAssigner: Assigning all I can");
     Set<DroneIdentifier> drones = getAvailableDronesForDeliveries();
@@ -84,33 +105,43 @@ public class OrderAssigner {
         "OrderAssigner: %d available drones for %d pending orders",
         drones.size(), pendingOrders.size());
 
+    Map<DroneIdentifier, Order> assignedOrders = new HashMap<>();
     while (!drones.isEmpty() && !pendingOrders.isEmpty()) {
       Order order = pendingOrders.remove(0);
       DroneIdentifier drone = findBestDroneForOrder(drones, order);
       drones.remove(drone);
-      communicationClient.assignOrder(
-          order,
-          drone,
-          new DroneCommunicationClient.AssignOrderCallback() {
-            @Override
-            public void onFailure() {
-              Log.warn(
-                  "Failed to assign order %d to drone #%d. Re-adding order to queue...",
-                  order.getId(), drone.getId());
-              dronesStore.signalFailedCommunicationWithDrone(drone);
-              enqueueOrder(order);
-            }
-
-            @Override
-            public void onOrderAccepted() {
-              Log.info("Order %d was accepted by drone #%d", order.getId(), drone.getId());
-              dronesStore.signalDroneWasAssignedOrder(drone, order);
-            }
-          });
+      dronesStore.signalDroneWasAssignedOrder(drone, order);
+      assignedOrders.put(drone, order);
     }
+
+    assignedOrders.entrySet().parallelStream()
+        .forEach(
+            entry -> {
+              DroneIdentifier drone = entry.getKey();
+              Order order = entry.getValue();
+              boolean successfullyAssigned = communicationClient.assignOrder(order, drone);
+              if (successfullyAssigned) {
+                Log.info("Order %d was accepted by drone #%d", order.getId(), drone.getId());
+              } else {
+                Log.warn(
+                    "Failed to assign order %d to drone #%d. Re-adding order to queue...",
+                    order.getId(), drone.getId());
+                dronesStore.signalFailedCommunicationWithDrone(drone);
+                enqueueOrder(order);
+              }
+            });
 
     Log.info(
         "OrderAssigner: Completed. Available drones: %d, pending orders: %d",
         drones.size(), pendingOrders.size());
+  }
+
+  private Runnable noPendingOrdersCallback = null;
+
+  public void doAsSoonAsThereAreNoPendingOrders(Runnable callback) {
+    synchronized (this) {
+      noPendingOrdersCallback = callback;
+      if (!areTherePendingOrders()) noPendingOrdersCallback.run();
+    }
   }
 }

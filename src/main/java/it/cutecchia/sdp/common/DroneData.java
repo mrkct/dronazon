@@ -64,6 +64,14 @@ public class DroneData {
     return batteryPercentage;
   }
 
+  public boolean isLowBattery() {
+    return batteryPercentage < 15;
+  }
+
+  public boolean isAvailableForDeliveries() {
+    return !isLowBattery() && assignedOrder == null;
+  }
+
   @Override
   public String toString() {
     return String.format(

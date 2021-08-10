@@ -57,11 +57,6 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     return DroneServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3, TimeUnit.SECONDS);
   }
 
-  private DroneServiceGrpc.DroneServiceStub getAsyncStub(DroneIdentifier drone) {
-    ManagedChannel channel = getManagedChannel(drone);
-    return DroneServiceGrpc.newStub(channel).withDeadlineAfter(3, TimeUnit.SECONDS);
-  }
-
   // The methods below this point are what a drone should call to do the operation
 
   /**
@@ -97,44 +92,30 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
 
   /**
    * Assign an order to a drone, requesting that it delivers that order. This method should only be
-   * used by the master since it is the only one with the authority to assign orders. This is not
-   * blocking
+   * used by the master since it is the only one with the authority to assign orders. This is
+   * blocking.
    *
    * @param order The order you want to assign
    * @param drone The drone you would like to deliver the order
-   * @param callback A callback for when the drone has accepted to deliver this order or when the
-   *     drone was not reachable
    */
   @Override
-  public void assignOrder(Order order, DroneIdentifier drone, AssignOrderCallback callback) {
+  public boolean assignOrder(Order order, DroneIdentifier drone) {
     DroneServiceOuterClass.AssignOrderMessage message =
         DroneServiceOuterClass.AssignOrderMessage.newBuilder().setOrder(order.toProto()).build();
-    Context.current()
-        .fork()
-        .run(
-            () -> {
-              getAsyncStub(drone)
-                  .assignOrder(
-                      message,
-                      new StreamObserver<DroneServiceOuterClass.Empty>() {
-                        @Override
-                        public void onNext(DroneServiceOuterClass.Empty value) {
-                          callback.onOrderAccepted();
-                        }
-
-                        @Override
-                        public void onError(Throwable t) {
-                          Log.warn(
-                              "Failed to assign order with context %s due to: %s",
-                              Context.current(), t.getMessage());
-                          // t.printStackTrace();
-                          callback.onFailure();
-                        }
-
-                        @Override
-                        public void onCompleted() {}
-                      });
-            });
+    try {
+      return Context.current()
+          .fork()
+          .call(
+              () -> {
+                getBlockingStub(drone).assignOrder(message);
+                return true;
+              });
+    } catch (Exception e) {
+      Log.warn(
+          "Failed to assign order with context %s due to: %s", Context.current(), e.getMessage());
+      e.printStackTrace();
+      return false;
+    }
   }
 
   /**
@@ -198,10 +179,10 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   }
 
   @Override
-  public synchronized void shutdownAllChannels() {
-    Log.notice("shutdownAllChannels");
+  public synchronized void shutdown() {
+    Log.notice("Shutting down the middleware...");
     for (ManagedChannel channel : openChannels.values()) {
-      channel.shutdownNow();
+      channel.shutdown();
     }
     openChannels.clear();
     rpcServer.shutdown();
@@ -228,20 +209,21 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
       DroneServiceOuterClass.AssignOrderMessage request,
       StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
     Order order = Order.fromProto(request.getOrder());
-    responseObserver.onNext(empty());
-    responseObserver.onCompleted();
 
     Context.current().fork().run(() -> droneServer.onOrderAssigned(order));
+
+    responseObserver.onNext(empty());
+    responseObserver.onCompleted();
   }
 
   @Override
   public void notifyCompletedDelivery(
       DroneServiceOuterClass.CompletedDeliveryMessage request,
       StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
-    droneServer.onCompletedDeliveryNotification(CompletedDeliveryMessage.fromProto(request));
-
     responseObserver.onNext(empty());
     responseObserver.onCompleted();
+
+    droneServer.onCompletedDeliveryNotification(CompletedDeliveryMessage.fromProto(request));
   }
 
   @Override

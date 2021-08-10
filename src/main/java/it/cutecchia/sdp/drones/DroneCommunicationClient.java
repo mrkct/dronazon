@@ -13,13 +13,7 @@ public interface DroneCommunicationClient {
   Optional<DroneJoinResponse> notifyDroneJoin(
       DroneIdentifier destination, CityPoint startingPosition);
 
-  interface AssignOrderCallback {
-    void onFailure();
-
-    void onOrderAccepted();
-  }
-
-  void assignOrder(Order order, DroneIdentifier drone, AssignOrderCallback callback);
+  boolean assignOrder(Order order, DroneIdentifier drone);
 
   boolean notifyCompletedDelivery(DroneIdentifier masterDrone, CompletedDeliveryMessage message);
 
@@ -31,5 +25,5 @@ public interface DroneCommunicationClient {
 
   Optional<DroneData> requestData(DroneIdentifier drone);
 
-  void shutdownAllChannels();
+  void shutdown();
 }

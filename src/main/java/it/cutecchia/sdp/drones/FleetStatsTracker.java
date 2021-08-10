@@ -24,24 +24,26 @@ public class FleetStatsTracker extends Thread {
     this.store = drones;
   }
 
+  private final TimerTask calculateAndSendStatsTask =
+      new TimerTask() {
+        @Override
+        public void run() {
+          FleetStats stats = calculateFleetStats();
+          Log.notice("Sending stats to admin server %s", stats);
+          client.sendFleetStats(stats);
+          resetFleetStats();
+        }
+      };
+
   public void start() {
     Log.warn("FleetStatsTracker start");
-    timer.schedule(
-        new TimerTask() {
-          @Override
-          public void run() {
-            FleetStats stats = calculateFleetStats();
-            Log.notice("Sending stats to admin server %s", stats);
-            client.sendFleetStats(stats);
-            resetFleetStats();
-          }
-        },
-        0,
-        10 * 1000);
+    timer.schedule(calculateAndSendStatsTask, 0, 10 * 1000);
   }
 
-  public void shutdown() {
+  public void sendStatsAndShutdown() {
+    Log.notice("FleetStatsTracker is shutting down and sending the last stats...");
     timer.cancel();
+    calculateAndSendStatsTask.run();
   }
 
   public void handleCompletedDeliveryStats(double pollution, double travelledKms) {

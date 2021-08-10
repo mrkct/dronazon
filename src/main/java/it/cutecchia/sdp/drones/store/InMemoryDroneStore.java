@@ -5,6 +5,7 @@ import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.Log;
 import it.cutecchia.sdp.common.Order;
 import java.util.*;
+import javax.annotation.Nonnull;
 
 public class InMemoryDroneStore implements DroneStore {
   // FIXME: Instead of DroneIdentifier use an int, otherwise if another drone comes with different
@@ -13,13 +14,6 @@ public class InMemoryDroneStore implements DroneStore {
   private DroneIdentifier knownMaster = null;
 
   public InMemoryDroneStore() {}
-
-  public InMemoryDroneStore(DroneStore store) {
-    for (DroneIdentifier drone : store.getAllDroneIdentifiers()) {
-      addDrone(drone);
-    }
-    setKnownMaster(store.getKnownMaster());
-  }
 
   @Override
   public Set<DroneIdentifier> getAllDroneIdentifiers() {
@@ -74,16 +68,17 @@ public class InMemoryDroneStore implements DroneStore {
   }
 
   @Override
-  public void signalDroneWasAssignedOrder(DroneIdentifier drone, Order order) {
-    assert (drones.containsKey(drone));
-    assert (getDroneData(drone).isPresent());
+  public void signalDroneWasAssignedOrder(@Nonnull DroneIdentifier drone, @Nonnull Order order) {
+    assert drones.containsKey(drone);
+    assert getDroneData(drone).isPresent();
+    assert getDroneData(drone).get().getAssignedOrder() == null;
 
     handleDroneUpdateData(drone, getDroneData(drone).get().withOrder(order));
   }
 
   @Override
   public void setKnownMaster(DroneIdentifier drone) {
-    assert (drones.containsKey(drone));
+    assert drones.containsKey(drone);
     knownMaster = drone;
   }
 

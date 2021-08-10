@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 public class OrderAssignerTest {
   @Test
-  public void closestDroneIsChosen() {
+  public void closestDroneIsChosen() throws InterruptedException {
     DroneIdentifier closestDroneId = new DroneIdentifier(0, "123", 123);
     DroneIdentifier otherDroneId = new DroneIdentifier(1, "123", 123);
     DroneIdentifier otherDroneId2 = new DroneIdentifier(2, "123", 123);
@@ -34,11 +34,14 @@ public class OrderAssignerTest {
     OrderAssigner assigner = new OrderAssigner(store, client);
     assigner.enqueueOrder(order);
 
-    verify(client, times(1)).assignOrder(same(order), same(closestDroneId), any());
+    Thread.sleep(100);
+
+    verify(client, times(1)).assignOrder(same(order), same(closestDroneId));
   }
 
   @Test
-  public void highestBatteryDroneIsChosenWhenTheyHaveTheSameDistanceToTheOrder() {
+  public void highestBatteryDroneIsChosenWhenTheyHaveTheSameDistanceToTheOrder()
+      throws InterruptedException {
     DroneIdentifier highestBatteryDrone = new DroneIdentifier(0, "123", 123);
     DroneIdentifier otherDroneId = new DroneIdentifier(1, "123", 123);
     DroneIdentifier otherDroneId2 = new DroneIdentifier(2, "123", 123);
@@ -61,11 +64,14 @@ public class OrderAssignerTest {
     OrderAssigner assigner = new OrderAssigner(store, client);
     assigner.enqueueOrder(order);
 
-    verify(client, times(1)).assignOrder(same(order), same(highestBatteryDrone), any());
+    Thread.sleep(100);
+
+    verify(client, times(1)).assignOrder(same(order), same(highestBatteryDrone));
   }
 
   @Test
-  public void highestIdDroneIsChosenWhenTheyHaveTheSameDistanceAndSameBatteryLevel() {
+  public void highestIdDroneIsChosenWhenTheyHaveTheSameDistanceAndSameBatteryLevel()
+      throws InterruptedException {
     DroneIdentifier highestIdDrone = new DroneIdentifier(4, "123", 123);
     DroneIdentifier otherDroneId = new DroneIdentifier(3, "123", 123);
     DroneIdentifier otherDroneId2 = new DroneIdentifier(2, "123", 123);
@@ -88,6 +94,8 @@ public class OrderAssignerTest {
     OrderAssigner assigner = new OrderAssigner(store, client);
     assigner.enqueueOrder(order);
 
-    verify(client, times(1)).assignOrder(same(order), same(highestIdDrone), any());
+    Thread.sleep(100);
+
+    verify(client, times(1)).assignOrder(same(order), same(highestIdDrone));
   }
 }

@@ -59,7 +59,7 @@ public class RingSlaveState implements DroneState {
   public void teardown() {}
 
   @Override
-  public void shutdown() {
+  public void initiateShutdown() {
     Log.notice("Initiated shutdown procedure (slave)");
     shutdownInitiated = true;
     synchronized (drone) {
@@ -72,20 +72,17 @@ public class RingSlaveState implements DroneState {
 
   private void forceShutdown() {
     Log.notice("Force Shutdown");
-    droneClient.shutdownAllChannels();
+    droneClient.shutdown();
     adminClient.requestDroneExit(drone.getIdentifier());
     System.exit(0);
   }
 
   @Override
   public void afterCompletingAnOrder() {
+    if (drone.getData().isLowBattery()) initiateShutdown();
+
     if (shutdownInitiated) {
       forceShutdown();
     }
-  }
-
-  @Override
-  public void onLowBattery() {
-    shutdown();
   }
 }

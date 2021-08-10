@@ -1,5 +1,6 @@
 package it.cutecchia.sdp.drones.states;
 
+import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.Log;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
 
@@ -8,17 +9,15 @@ public interface DroneState {
 
   void teardown();
 
-  void shutdown();
-
-  void onLowBattery();
+  void initiateShutdown();
 
   default void onCompletedDeliveryNotification(CompletedDeliveryMessage message) {
-    Log.warn(
-        "A non-master drone received an order completed message (Order: %s, Drone: %s)",
-        message.getOrder(), message.getDrone());
+    Log.warn("Only the master should be notified of completed deliveries");
   }
 
   void afterCompletingAnOrder();
+
+  default void onNewDroneJoin(DroneIdentifier newDrone) {}
 
   default boolean isMaster() {
     return false;

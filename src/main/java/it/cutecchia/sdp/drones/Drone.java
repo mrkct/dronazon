@@ -21,9 +21,8 @@ public class Drone implements DroneCommunicationServer {
   private final DroneStore store = new InMemoryDroneStore();
   private final PollutionTracker pollutionTracker = new PollutionTracker();
 
-  private DroneData data;
   private DroneState currentState;
-  private volatile boolean deliveringOrder = false;
+  private DroneData localData;
 
   public Drone(
       DroneIdentifier identifier, OrderSource orderSource, AdminServerClient adminServerClient) {
@@ -39,11 +38,11 @@ public class Drone implements DroneCommunicationServer {
   }
 
   public DroneData getData() {
-    return data;
+    return localData;
   }
 
   public boolean isDeliveringOrder() {
-    return deliveringOrder;
+    return localData.getAssignedOrder() != null;
   }
 
   public void start() throws IOException {
@@ -53,7 +52,7 @@ public class Drone implements DroneCommunicationServer {
   }
 
   public void shutdown() {
-    currentState.shutdown();
+    currentState.initiateShutdown();
   }
 
   public void changeStateTo(DroneState newState) {
@@ -65,11 +64,11 @@ public class Drone implements DroneCommunicationServer {
   public void onAdminServerAcceptance(CityPoint position, Set<DroneIdentifier> allDrones) {
     Log.notice("Drone %d# was accepted by the admin server", identifier.getId());
 
-    data = new DroneData(position);
     allDrones.forEach(store::addDrone);
+    store.handleDroneUpdateData(identifier, new DroneData(position));
+    localData = new DroneData(position);
 
     if (allDrones.size() == 1) {
-      store.handleDroneUpdateData(identifier, data);
       store.setKnownMaster(identifier);
       changeStateTo(new RingMasterState(this, store, middleware, adminServerClient, orderSource));
     } else {
@@ -82,21 +81,24 @@ public class Drone implements DroneCommunicationServer {
     store.addDrone(identifier);
     store.handleDroneUpdateData(identifier, new DroneData(startingPosition));
     Log.notice("A new drone (#%d) joined the ring at %s", identifier.getId(), startingPosition);
+    currentState.onNewDroneJoin(identifier);
 
     return new DroneJoinResponse(getIdentifier(), currentState.isMaster());
   }
 
+  private double calculateTotalTravelledDistanceForOrder(CityPoint startingPosition, Order order) {
+    return startingPosition.distanceTo(order.getStartPoint())
+        + order.getStartPoint().distanceTo(order.getDeliveryPoint());
+  }
+
   @Override
-  public void onOrderAssigned(Order order) {
+  public synchronized void onOrderAssigned(Order order) {
     Log.info("%d: I was assigned order %s. Delivering...", System.currentTimeMillis(), order);
-    assert !deliveringOrder;
+    assert !isDeliveringOrder();
+    localData = localData.withOrder(order);
     new Thread(
             () -> {
-              // FIXME: Why?
-              synchronized (this) {
-                deliveringOrder = true;
-              }
-
+              Log.info("zzz for order %d", order.getId());
               try {
                 Thread.sleep(5 * 1000);
               } catch (InterruptedException e) {
@@ -107,28 +109,27 @@ public class Drone implements DroneCommunicationServer {
                   "%d: Delivered order %s. Sending confirmation message...",
                   System.currentTimeMillis(), order);
 
+              CityPoint droneStartingPosition = getData().getPosition();
               CompletedDeliveryMessage message =
                   new CompletedDeliveryMessage(
                       System.currentTimeMillis(),
                       getIdentifier(),
                       order,
-                      data.getPosition().distanceTo(order.getStartPoint())
-                          + order.getStartPoint().distanceTo(order.getDeliveryPoint()),
+                      calculateTotalTravelledDistanceForOrder(droneStartingPosition, order),
                       pollutionTracker.getAverageMeasurementsValue(),
                       getData().getBatteryPercentage() - 10);
 
               pollutionTracker.clearAllMeasurements();
-              deliveringOrder = false;
 
-              data = new DroneData(order.getDeliveryPoint(), data.getBatteryPercentage() - 10);
+              localData =
+                  new DroneData(order.getDeliveryPoint(), getData().getBatteryPercentage() - 10);
 
               middleware.deliverToMaster(
                   store, (master) -> middleware.notifyCompletedDelivery(master, message));
 
-              if (data.getBatteryPercentage() < 15) {
-                currentState.onLowBattery();
-              }
               currentState.afterCompletingAnOrder();
+
+              Log.notice("Order %d was fully completed (from slave perspective)", order.getId());
             })
         .start();
   }
@@ -140,6 +141,6 @@ public class Drone implements DroneCommunicationServer {
 
   @Override
   public DroneData onDataRequest() {
-    return data;
+    return getData();
   }
 }

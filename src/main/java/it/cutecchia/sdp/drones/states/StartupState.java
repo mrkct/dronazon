@@ -3,6 +3,7 @@ package it.cutecchia.sdp.drones.states;
 import it.cutecchia.sdp.admin.server.AdminServerClient;
 import it.cutecchia.sdp.admin.server.messages.DroneEnterResponse;
 import it.cutecchia.sdp.drones.Drone;
+import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
 
 /**
  * In this state the drone communicates with the admin server to get the necessary info to join the
@@ -18,8 +19,13 @@ public class StartupState implements DroneState {
   }
 
   @Override
-  public void onLowBattery() {
-    throw new IllegalStateException();
+  public void onCompletedDeliveryNotification(CompletedDeliveryMessage message) {
+    throw new IllegalStateException("A drone in StartupState was notified of a completed delivery");
+  }
+
+  @Override
+  public boolean isMaster() {
+    return false;
   }
 
   @Override
@@ -42,5 +48,5 @@ public class StartupState implements DroneState {
   public void teardown() {}
 
   @Override
-  public void shutdown() {}
+  public void initiateShutdown() {}
 }
