@@ -15,7 +15,7 @@ public interface DroneStore {
 
   Optional<DroneData> getDroneData(DroneIdentifier identifier);
 
-  Optional<DroneIdentifier> getNextDroneInElectionRing(DroneIdentifier identifier);
+  DroneIdentifier getNextDroneInElectionRing(DroneIdentifier identifier);
 
   void signalFailedCommunicationWithDrone(DroneIdentifier drone);
 

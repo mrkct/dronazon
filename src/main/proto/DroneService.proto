@@ -58,11 +58,22 @@ message DataRequestResponse {
   DroneDataPacket data = 2;
 }
 
+message ElectionMessage {
+  DroneIdentifierPacket candidate_leader = 1;
+  int32 candidate_leader_battery_percentage = 2;
+}
+
+message ElectedMessage {
+  DroneIdentifierPacket new_leader = 1;
+}
+
 service DroneService {
   // Used by all drones
   rpc NotifyDroneJoin(DroneJoinMessage) returns (DroneJoinResponse);
   rpc AssignOrder(AssignOrderMessage) returns (Empty);
   rpc RequestData(Empty) returns (DroneDataPacket);
+  rpc NotifyElectionMessage(ElectionMessage) returns (Empty);
+  rpc NotifyElectedMessage(ElectedMessage) returns (Empty);
 
   // Used only on the master
   rpc NotifyCompletedDelivery(CompletedDeliveryMessage) returns (Empty);

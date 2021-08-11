@@ -26,11 +26,11 @@ public class InMemoryDroneStore implements DroneStore {
   }
 
   @Override
-  public Optional<DroneIdentifier> getNextDroneInElectionRing(DroneIdentifier identifier) {
-    if (drones.keySet().size() == 0) {
-      return Optional.empty();
-    } else if (drones.keySet().size() == 1) {
-      return drones.keySet().stream().findFirst();
+  public DroneIdentifier getNextDroneInElectionRing(DroneIdentifier identifier) {
+    assert drones.keySet().size() > 0;
+
+    if (drones.keySet().size() == 1) {
+      return drones.keySet().stream().findFirst().get();
     }
 
     Optional<DroneIdentifier> firstNextIdentifier =
@@ -38,10 +38,10 @@ public class InMemoryDroneStore implements DroneStore {
             .filter(id -> id.getId() > identifier.getId())
             .min(DroneIdentifier::compareTo);
     if (firstNextIdentifier.isPresent()) {
-      return firstNextIdentifier;
+      return firstNextIdentifier.get();
     }
 
-    return drones.keySet().parallelStream().min(DroneIdentifier::compareTo);
+    return drones.keySet().parallelStream().min(DroneIdentifier::compareTo).get();
   }
 
   @Override

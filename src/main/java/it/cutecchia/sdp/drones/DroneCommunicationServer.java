@@ -17,9 +17,7 @@ public interface DroneCommunicationServer {
 
   DroneData onDataRequest();
 
-  // Drone.DroneJoinResponse onDroneJoin(Drone.DroneJoinMessage message);
+  void onElectionMessage(DroneIdentifier candidateLeader, int candidateBatteryPercentage);
 
-  // void onOrderCompletion();
-  // PollutionData onPollutionDataRequest();
-  // void onElectionMessageReceived(ElectionMessage message);
+  void onElectedMessage(DroneIdentifier newLeader);
 }

@@ -6,7 +6,6 @@ import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.Order;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
 import it.cutecchia.sdp.drones.responses.DroneJoinResponse;
-import it.cutecchia.sdp.drones.store.DroneStore;
 import java.util.Optional;
 
 public interface DroneCommunicationClient {
@@ -21,9 +20,14 @@ public interface DroneCommunicationClient {
     boolean trySending(DroneIdentifier master);
   }
 
-  void deliverToMaster(DroneStore store, DeliverToMasterCallback callback);
-
   Optional<DroneData> requestData(DroneIdentifier drone);
+
+  boolean forwardElectionMessage(
+      DroneIdentifier destination,
+      DroneIdentifier candidateLeader,
+      int candidateLeaderBatteryPercentage);
+
+  boolean forwardElectedMessage(DroneIdentifier destination, DroneIdentifier newLeader);
 
   void shutdown();
 }

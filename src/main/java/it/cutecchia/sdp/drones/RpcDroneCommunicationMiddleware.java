@@ -7,7 +7,6 @@ import it.cutecchia.sdp.drones.grpc.DroneServiceGrpc;
 import it.cutecchia.sdp.drones.grpc.DroneServiceOuterClass;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
 import it.cutecchia.sdp.drones.responses.DroneJoinResponse;
-import it.cutecchia.sdp.drones.store.DroneStore;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -136,29 +135,12 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
       stub.notifyCompletedDelivery(message.toProto());
       return true;
     } catch (StatusRuntimeException e) {
-      Log.warn(e.getMessage());
-      e.printStackTrace();
+      Log.warn(
+          "Failed to notify completed delivery to %d due to: %s",
+          masterDrone.getId(), e.getMessage());
+      // e.printStackTrace();
       return false;
     }
-  }
-
-  /**
-   * Attempt to the deliver a message to the master drone. If the drone is unreachable start an
-   * election and attempt to send the message to the new master and repeat attempting until a
-   * reachable master is elected. This is blocking.
-   *
-   * @param store The drone store from which the master will be taken. If an election has to occur
-   *     to deliver the message to the master the store will be updated with the new master and each
-   *     failed communication will be notified to the store
-   * @param callback A function that will send the message to the master and return true if the
-   *     communication succeeded, false if the communication failed.
-   */
-  @Override
-  public void deliverToMaster(DroneStore store, DeliverToMasterCallback callback) {
-    DroneIdentifier master = store.getKnownMaster();
-    assert master != null;
-    boolean succeeded = callback.trySending(master);
-    assert succeeded;
   }
 
   /**
@@ -175,6 +157,44 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     } catch (StatusRuntimeException e) {
       Log.warn("Failed to request data from %s: %s", drone, e.getMessage());
       return Optional.empty();
+    }
+  }
+
+  @Override
+  public boolean forwardElectionMessage(
+      DroneIdentifier destination,
+      DroneIdentifier candidateLeader,
+      int candidateLeaderBatteryPercentage) {
+    DroneServiceOuterClass.ElectionMessage message =
+        DroneServiceOuterClass.ElectionMessage.newBuilder()
+            .setCandidateLeader(candidateLeader.toProto())
+            .setCandidateLeaderBatteryPercentage(candidateLeaderBatteryPercentage)
+            .build();
+
+    try {
+      getBlockingStub(destination).notifyElectionMessage(message);
+      return true;
+    } catch (StatusRuntimeException e) {
+      Log.warn(
+          "Failed to send ELECTION message to %d due to: %s", destination.getId(), e.getMessage());
+      return false;
+    }
+  }
+
+  @Override
+  public boolean forwardElectedMessage(DroneIdentifier destination, DroneIdentifier newLeader) {
+    DroneServiceOuterClass.ElectedMessage message =
+        DroneServiceOuterClass.ElectedMessage.newBuilder()
+            .setNewLeader(newLeader.toProto())
+            .build();
+
+    try {
+      getBlockingStub(destination).notifyElectedMessage(message);
+      return true;
+    } catch (StatusRuntimeException e) {
+      Log.warn(
+          "Failed to send ELECTED message to %d due to: %s", destination.getId(), e.getMessage());
+      return false;
     }
   }
 
@@ -233,6 +253,34 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     DroneData data = droneServer.onDataRequest();
     responseObserver.onNext(data.toProto());
     responseObserver.onCompleted();
+  }
+
+  @Override
+  public void notifyElectionMessage(
+      DroneServiceOuterClass.ElectionMessage request,
+      StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
+    responseObserver.onNext(empty());
+    responseObserver.onCompleted();
+
+    Context.current()
+        .fork()
+        .run(
+            () ->
+                droneServer.onElectionMessage(
+                    DroneIdentifier.fromProto(request.getCandidateLeader()),
+                    request.getCandidateLeaderBatteryPercentage()));
+  }
+
+  @Override
+  public void notifyElectedMessage(
+      DroneServiceOuterClass.ElectedMessage request,
+      StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
+    responseObserver.onNext(empty());
+    responseObserver.onCompleted();
+
+    Context.current()
+        .fork()
+        .run(() -> droneServer.onElectedMessage(DroneIdentifier.fromProto(request.getNewLeader())));
   }
 
   private DroneServiceOuterClass.Empty empty() {

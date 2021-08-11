@@ -12,6 +12,7 @@ import it.cutecchia.sdp.drones.store.DroneStore;
 import it.cutecchia.sdp.drones.store.InMemoryDroneStore;
 import java.io.IOException;
 import java.util.Set;
+import java.util.function.Function;
 
 public class Drone implements DroneCommunicationServer {
   private final AdminServerClient adminServerClient;
@@ -20,9 +21,10 @@ public class Drone implements DroneCommunicationServer {
   private final RpcDroneCommunicationMiddleware middleware;
   private final DroneStore store = new InMemoryDroneStore();
   private final PollutionTracker pollutionTracker = new PollutionTracker();
+  private final ElectionManager electionManager;
 
-  private DroneState currentState;
-  private DroneData localData;
+  private volatile DroneState currentState;
+  private volatile DroneData localData;
 
   public Drone(
       DroneIdentifier identifier, OrderSource orderSource, AdminServerClient adminServerClient) {
@@ -31,6 +33,7 @@ public class Drone implements DroneCommunicationServer {
     this.currentState = new StartupState(this, adminServerClient);
     this.middleware = new RpcDroneCommunicationMiddleware(identifier, this);
     this.orderSource = orderSource;
+    this.electionManager = new ElectionManager(this, store, middleware);
   }
 
   public DroneIdentifier getIdentifier() {
@@ -91,6 +94,27 @@ public class Drone implements DroneCommunicationServer {
         + order.getStartPoint().distanceTo(order.getDeliveryPoint());
   }
 
+  private void deliverToMaster(Function<DroneIdentifier, Boolean> send, Runnable onSuccess) {
+    final DroneIdentifier knownMaster = store.getKnownMaster();
+    if (send.apply(knownMaster)) {
+      onSuccess.run();
+      return;
+    }
+
+    store.signalFailedCommunicationWithDrone(knownMaster);
+
+    electionManager.setOnNewMasterElectedListener(
+        () -> {
+          if (send.apply(store.getKnownMaster())) {
+            electionManager.clearOnNewMasterElectedListener();
+            onSuccess.run();
+          } else {
+            electionManager.beginElection();
+          }
+        });
+    electionManager.beginElection();
+  }
+
   @Override
   public synchronized void onOrderAssigned(Order order) {
     Log.info("%d: I was assigned order %s. Delivering...", System.currentTimeMillis(), order);
@@ -124,14 +148,25 @@ public class Drone implements DroneCommunicationServer {
               localData =
                   new DroneData(order.getDeliveryPoint(), getData().getBatteryPercentage() - 10);
 
-              middleware.deliverToMaster(
-                  store, (master) -> middleware.notifyCompletedDelivery(master, message));
-
-              currentState.afterCompletingAnOrder();
-
-              Log.notice("Order %d was fully completed (from slave perspective)", order.getId());
+              deliverToMaster(
+                  (master) -> middleware.notifyCompletedDelivery(master, message),
+                  () -> {
+                    currentState.afterCompletingAnOrder();
+                    Log.notice(
+                        "Order %d was fully completed (from slave perspective)", order.getId());
+                  });
             })
         .start();
+  }
+
+  @Override
+  public void onElectionMessage(DroneIdentifier candidateLeader, int candidateBatteryPercentage) {
+    electionManager.onElectionMessage(candidateLeader, candidateBatteryPercentage);
+  }
+
+  @Override
+  public void onElectedMessage(DroneIdentifier newLeader) {
+    electionManager.onElectedMessage(newLeader);
   }
 
   @Override
@@ -142,5 +177,10 @@ public class Drone implements DroneCommunicationServer {
   @Override
   public DroneData onDataRequest() {
     return getData();
+  }
+
+  public void becomeMaster() {
+    Log.notice("Becoming master");
+    changeStateTo(new RingMasterState(this, store, middleware, adminServerClient, orderSource));
   }
 }

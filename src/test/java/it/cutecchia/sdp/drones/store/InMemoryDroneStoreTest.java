@@ -19,7 +19,7 @@ public class InMemoryDroneStoreTest {
     store.addDrone(b);
     store.addDrone(c);
 
-    assertThat(store.getNextDroneInElectionRing(b)).contains(c);
+    assertThat(store.getNextDroneInElectionRing(b)).isEqualTo(c);
   }
 
   @Test
@@ -33,7 +33,7 @@ public class InMemoryDroneStoreTest {
     store.addDrone(b);
     store.addDrone(c);
 
-    assertThat(store.getNextDroneInElectionRing(c)).contains(a);
+    assertThat(store.getNextDroneInElectionRing(c)).isEqualTo(a);
   }
 
   @Test
@@ -43,16 +43,7 @@ public class InMemoryDroneStoreTest {
     InMemoryDroneStore store = new InMemoryDroneStore();
     store.addDrone(a);
 
-    assertThat(store.getNextDroneInElectionRing(a)).contains(a);
-  }
-
-  @Test
-  public void noDrones() {
-    DroneIdentifier a = new DroneIdentifier(1, "localhost", 0);
-
-    InMemoryDroneStore store = new InMemoryDroneStore();
-
-    assertThat(store.getNextDroneInElectionRing(a)).isEmpty();
+    assertThat(store.getNextDroneInElectionRing(a)).isEqualTo(a);
   }
 
   @Test
