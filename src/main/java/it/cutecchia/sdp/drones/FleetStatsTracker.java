@@ -6,6 +6,7 @@ import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.FleetStats;
 import it.cutecchia.sdp.common.Log;
 import it.cutecchia.sdp.drones.store.DroneStore;
+import java.util.List;
 import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -17,6 +18,7 @@ public class FleetStatsTracker extends Thread {
   private int deliveriesSinceLastUpdate = 0;
   private double kmsSinceLastUpdate = 0.0;
   private double pollutionSinceLastUpdate = 0.0;
+  private int pollutionMeasurementsSinceLastUpdate = 0;
   private final DroneStore store;
 
   public FleetStatsTracker(DroneStore drones, AdminServerClient client) {
@@ -46,10 +48,11 @@ public class FleetStatsTracker extends Thread {
     calculateAndSendStatsTask.run();
   }
 
-  public void handleCompletedDeliveryStats(double pollution, double travelledKms) {
+  public void handleCompletedDeliveryStats(List<Double> pollution, double travelledKms) {
     deliveriesSinceLastUpdate++;
     kmsSinceLastUpdate += travelledKms;
-    pollutionSinceLastUpdate += pollution;
+    pollutionMeasurementsSinceLastUpdate += pollution.size();
+    for (double p : pollution) pollutionSinceLastUpdate += p;
   }
 
   private double calculateAverageBatteryLevel() {
@@ -78,7 +81,7 @@ public class FleetStatsTracker extends Thread {
       return 0.0;
     }
 
-    return pollutionSinceLastUpdate / deliveriesSinceLastUpdate;
+    return pollutionSinceLastUpdate / pollutionMeasurementsSinceLastUpdate;
   }
 
   private double calculateAverageTravelledKms() {

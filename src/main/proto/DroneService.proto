@@ -49,7 +49,7 @@ message CompletedDeliveryMessage {
   OrderPacket completed_order = 3;
 
   double travelled_kms = 4;
-  double pollution = 5;
+  repeated double pollution = 5;
   int32 battery_percentage = 6;
 }
 

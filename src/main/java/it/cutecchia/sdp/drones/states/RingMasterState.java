@@ -54,7 +54,8 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
         message.getDrone(),
         new DroneData(message.getOrder().getDeliveryPoint(), message.getBatteryPercentage()));
     orderAssigner.notifyOrderCompleted(message.getOrder());
-    statsTracker.handleCompletedDeliveryStats(message.getPollution(), message.getTravelledKms());
+    statsTracker.handleCompletedDeliveryStats(
+        message.getPollutionValues(), message.getTravelledKms());
   }
 
   @Override

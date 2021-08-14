@@ -3,13 +3,14 @@ package it.cutecchia.sdp.drones.messages;
 import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.Order;
 import it.cutecchia.sdp.drones.grpc.DroneServiceOuterClass;
+import java.util.List;
 
 public class CompletedDeliveryMessage {
   private final long timestamp;
   private final DroneIdentifier drone;
   private final Order order;
   private final double travelledKms;
-  private final double pollution;
+  private final List<Double> pollution;
   private final int batteryPercentage;
 
   public CompletedDeliveryMessage(
@@ -17,7 +18,7 @@ public class CompletedDeliveryMessage {
       DroneIdentifier drone,
       Order order,
       double travelledKms,
-      double pollution,
+      List<Double> pollution,
       int batteryPercentage) {
     this.timestamp = timestamp;
     this.drone = drone;
@@ -34,7 +35,7 @@ public class CompletedDeliveryMessage {
         DroneIdentifier.fromProto(proto.getSender()),
         Order.fromProto(proto.getCompletedOrder()),
         proto.getTravelledKms(),
-        proto.getPollution(),
+        proto.getPollutionList(),
         proto.getBatteryPercentage());
   }
 
@@ -44,7 +45,7 @@ public class CompletedDeliveryMessage {
         .setSender(drone.toProto())
         .setCompletedOrder(order.toProto())
         .setTravelledKms(travelledKms)
-        .setPollution(pollution)
+        .addAllPollution(pollution)
         .setBatteryPercentage(batteryPercentage)
         .build();
   }
@@ -65,7 +66,7 @@ public class CompletedDeliveryMessage {
     return travelledKms;
   }
 
-  public double getPollution() {
+  public List<Double> getPollutionValues() {
     return pollution;
   }
 

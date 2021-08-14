@@ -140,7 +140,7 @@ public class Drone implements DroneCommunicationServer {
                       getIdentifier(),
                       order,
                       calculateTotalTravelledDistanceForOrder(droneStartingPosition, order),
-                      pollutionTracker.getAverageMeasurementsValue(),
+                      pollutionTracker.getMeasurements(),
                       getData().getBatteryPercentage() - 10);
 
               pollutionTracker.clearAllMeasurements();

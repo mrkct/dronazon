@@ -45,11 +45,9 @@ public class PollutionTracker implements Buffer, SlidingWindow.OnFullWindowAvail
     averageValues.clear();
   }
 
-  public double getAverageMeasurementsValue() {
-    double average = 0.0;
-    for (double x : averageValues) {
-      average += x;
+  public List<Double> getMeasurements() {
+    synchronized (averageValues) {
+      return new ArrayList<>(averageValues);
     }
-    return average / averageValues.size();
   }
 }
