@@ -28,6 +28,38 @@ public class StatisticsResource {
     return Response.ok(InMemoryStatisticsStore.getInstance().getStatsBetween(t1, t2)).build();
   }
 
+  @GET
+  @Produces("application/json")
+  @Path("/average-deliveries/after/{t1}/before/{t2}")
+  public Response getAverageDeliveriesBetweenTimestamps(
+      @PathParam("t1") long t1, @PathParam("t2") long t2) {
+    if (t1 > t2) {
+      return Response.status(Response.Status.BAD_REQUEST).build();
+    }
+    double average =
+        InMemoryStatisticsStore.getInstance().getStatsBetween(t1, t2).stream()
+            .mapToDouble(FleetStats::getAverageDeliveries)
+            .average()
+            .orElse(0.0);
+    return Response.ok(average).build();
+  }
+
+  @GET
+  @Produces("application/json")
+  @Path("/average-kms-travelled/after/{t1}/before/{t2}")
+  public Response getAverageKilometersTravelledBetweenTimestamps(
+      @PathParam("t1") long t1, @PathParam("t2") long t2) {
+    if (t1 > t2) {
+      return Response.status(Response.Status.BAD_REQUEST).build();
+    }
+    double average =
+        InMemoryStatisticsStore.getInstance().getStatsBetween(t1, t2).stream()
+            .mapToDouble(FleetStats::getAverageKmTravelled)
+            .average()
+            .orElse(0.0);
+    return Response.ok(average).build();
+  }
+
   @POST
   @Consumes("application/json")
   @Produces("application/json")
