@@ -28,7 +28,7 @@ public class ElectionManager {
             return true;
           }
           return client.forwardElectionMessage(
-              nextDrone, drone.getIdentifier(), drone.getData().getBatteryPercentage());
+              nextDrone, drone.getIdentifier(), drone.getLocalData().getBatteryPercentage());
         });
   }
 
@@ -74,7 +74,7 @@ public class ElectionManager {
         candidateMaster.getId(),
         candidateMasterBatteryPercentage,
         drone.getIdentifier().getId(),
-        drone.getData().getBatteryPercentage());
+        drone.getLocalData().getBatteryPercentage());
 
     final DroneIdentifier thisDrone = drone.getIdentifier();
     if (thisDrone.equals(candidateMaster)) {
@@ -86,7 +86,7 @@ public class ElectionManager {
       return;
     }
 
-    final int thisBatteryLevel = drone.getData().getBatteryPercentage();
+    final int thisBatteryLevel = drone.getLocalData().getBatteryPercentage();
 
     if (compareCandidates(
         thisDrone, thisBatteryLevel, candidateMaster, candidateMasterBatteryPercentage)) {

@@ -17,7 +17,7 @@ public class ElectionManagerTest {
 
     Drone drone = mock(Drone.class);
     when(drone.getIdentifier()).thenReturn(thisDrone);
-    when(drone.getData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
+    when(drone.getLocalData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
 
     DroneStore store = mock(DroneStore.class);
     when(store.getNextDroneInElectionRing(any())).thenReturn(nextDroneInRing);
@@ -38,7 +38,7 @@ public class ElectionManagerTest {
 
     Drone drone = mock(Drone.class);
     when(drone.getIdentifier()).thenReturn(thisDrone);
-    when(drone.getData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
+    when(drone.getLocalData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
 
     DroneStore store = mock(DroneStore.class);
     when(store.getNextDroneInElectionRing(any())).thenReturn(thisDrone);
@@ -63,7 +63,7 @@ public class ElectionManagerTest {
 
     Drone drone = mock(Drone.class);
     when(drone.getIdentifier()).thenReturn(thisDrone);
-    when(drone.getData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
+    when(drone.getLocalData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
 
     DroneStore store = mock(DroneStore.class);
     when(store.getNextDroneInElectionRing(any())).thenReturn(thisDrone);
@@ -86,7 +86,7 @@ public class ElectionManagerTest {
 
     Drone drone = mock(Drone.class);
     when(drone.getIdentifier()).thenReturn(thisDrone);
-    when(drone.getData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
+    when(drone.getLocalData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
 
     DroneStore store = mock(DroneStore.class);
     when(store.getNextDroneInElectionRing(any())).thenReturn(thisDrone);
@@ -111,7 +111,7 @@ public class ElectionManagerTest {
 
     Drone drone = mock(Drone.class);
     when(drone.getIdentifier()).thenReturn(thisDrone);
-    when(drone.getData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
+    when(drone.getLocalData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
 
     DroneStore store = mock(DroneStore.class);
     when(store.getNextDroneInElectionRing(any())).thenReturn(thisDrone);
@@ -138,7 +138,7 @@ public class ElectionManagerTest {
 
     Drone drone = mock(Drone.class);
     when(drone.getIdentifier()).thenReturn(thisDrone);
-    when(drone.getData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
+    when(drone.getLocalData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
 
     DroneStore store = mock(DroneStore.class);
     when(store.getNextDroneInElectionRing(any())).thenReturn(thisDrone);
@@ -165,7 +165,7 @@ public class ElectionManagerTest {
 
     Drone drone = mock(Drone.class);
     when(drone.getIdentifier()).thenReturn(thisDrone);
-    when(drone.getData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
+    when(drone.getLocalData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
 
     DroneStore store = mock(DroneStore.class);
     when(store.getNextDroneInElectionRing(any())).thenReturn(anotherDrone);
@@ -190,7 +190,7 @@ public class ElectionManagerTest {
 
     Drone drone = mock(Drone.class);
     when(drone.getIdentifier()).thenReturn(thisDrone);
-    when(drone.getData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
+    when(drone.getLocalData()).thenReturn(new DroneData(new CityPoint(0, 0), thisDroneBattery));
 
     DroneStore store = mock(DroneStore.class);
     when(store.getNextDroneInElectionRing(any())).thenReturn(nextDroneInRing);

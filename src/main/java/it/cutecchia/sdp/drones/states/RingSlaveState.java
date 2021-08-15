@@ -33,7 +33,7 @@ public class RingSlaveState implements DroneState {
 
   @Override
   public void start() {
-    CityPoint startingPosition = drone.getData().getPosition();
+    CityPoint startingPosition = drone.getLocalData().getPosition();
 
     Set<DroneIdentifier> drones = new TreeSet<>(store.getAllDroneIdentifiers());
     drones.parallelStream()
@@ -85,7 +85,7 @@ public class RingSlaveState implements DroneState {
 
   @Override
   public void afterCompletingAnOrder() {
-    if (drone.getData().isLowBattery()) initiateShutdown();
+    if (drone.getLocalData().isLowBattery()) initiateShutdown();
 
     if (shutdownInitiated) {
       DataRaceTester.sleep();

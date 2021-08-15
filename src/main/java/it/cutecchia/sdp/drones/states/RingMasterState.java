@@ -143,7 +143,7 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
     if (noOrderToDeliverCallback != null) {
       noOrderToDeliverCallback.run();
     }
-    if (drone.getData().isLowBattery()) initiateShutdown();
+    if (drone.getLocalData().isLowBattery()) initiateShutdown();
   }
 
   @Override

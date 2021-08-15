@@ -12,6 +12,8 @@ import it.cutecchia.sdp.drones.store.DroneStore;
 import it.cutecchia.sdp.drones.store.InMemoryDroneStore;
 import java.io.IOException;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.function.Function;
 
 public class Drone implements DroneCommunicationServer {
@@ -25,6 +27,22 @@ public class Drone implements DroneCommunicationServer {
 
   private volatile DroneState currentState;
   private volatile DroneData localData;
+  private volatile int totalDeliveredOrders = 0;
+  private volatile double totalTravelledDistance = 0.0;
+
+  private final Timer printStatsTimer = new Timer();
+  private final TimerTask printStatsTask =
+      new TimerTask() {
+        @Override
+        public void run() {
+          Log.notice(
+              "%d#: Total delivered orders: %d\tDistance travelled: %3f\tRemaining battery: %d%%",
+              identifier.getId(),
+              totalDeliveredOrders,
+              totalTravelledDistance,
+              getLocalData().getBatteryPercentage());
+        }
+      };
 
   public Drone(
       DroneIdentifier identifier, OrderSource orderSource, AdminServerClient adminServerClient) {
@@ -40,7 +58,7 @@ public class Drone implements DroneCommunicationServer {
     return identifier;
   }
 
-  public DroneData getData() {
+  public DroneData getLocalData() {
     return localData;
   }
 
@@ -52,6 +70,7 @@ public class Drone implements DroneCommunicationServer {
     middleware.startRpcServer();
     currentState.start();
     pollutionTracker.startTracking();
+    printStatsTimer.scheduleAtFixedRate(printStatsTask, 0, 10 * 1000);
   }
 
   public void shutdown() {
@@ -133,20 +152,26 @@ public class Drone implements DroneCommunicationServer {
                   "%d: Delivered order %s. Sending confirmation message...",
                   System.currentTimeMillis(), order);
 
-              CityPoint droneStartingPosition = getData().getPosition();
+              CityPoint droneStartingPosition = getLocalData().getPosition();
+              double distanceTravelledForThisOrder =
+                  calculateTotalTravelledDistanceForOrder(droneStartingPosition, order);
               CompletedDeliveryMessage message =
                   new CompletedDeliveryMessage(
                       System.currentTimeMillis(),
                       getIdentifier(),
                       order,
-                      calculateTotalTravelledDistanceForOrder(droneStartingPosition, order),
+                      distanceTravelledForThisOrder,
                       pollutionTracker.getMeasurements(),
-                      getData().getBatteryPercentage() - 10);
+                      getLocalData().getBatteryPercentage() - 10);
+
+              totalDeliveredOrders++;
+              totalTravelledDistance += distanceTravelledForThisOrder;
 
               pollutionTracker.clearAllMeasurements();
 
               localData =
-                  new DroneData(order.getDeliveryPoint(), getData().getBatteryPercentage() - 10);
+                  new DroneData(
+                      order.getDeliveryPoint(), getLocalData().getBatteryPercentage() - 10);
 
               deliverToMaster(
                   (master) -> middleware.notifyCompletedDelivery(master, message),
@@ -176,7 +201,7 @@ public class Drone implements DroneCommunicationServer {
 
   @Override
   public DroneData onDataRequest() {
-    return getData();
+    return getLocalData();
   }
 
   public void becomeMaster() {
