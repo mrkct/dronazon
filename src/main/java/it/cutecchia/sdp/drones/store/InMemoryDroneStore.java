@@ -17,40 +17,47 @@ public class InMemoryDroneStore implements DroneStore {
 
   @Override
   public Set<DroneIdentifier> getAllDroneIdentifiers() {
-    return drones.keySet();
+    synchronized (drones) {
+      return new TreeSet<>(drones.keySet());
+    }
   }
 
   @Override
-  public synchronized void addDrone(DroneIdentifier identifier) {
-    drones.put(identifier, null);
+  public void addDrone(DroneIdentifier identifier, DroneData data) {
+    synchronized (drones) {
+      drones.put(identifier, data);
+    }
   }
 
   @Override
   public DroneIdentifier getNextDroneInElectionRing(DroneIdentifier identifier) {
     assert drones.keySet().size() > 0;
 
-    if (drones.keySet().size() == 1) {
-      return drones.keySet().stream().findFirst().get();
+    Set<DroneIdentifier> drones = getAllDroneIdentifiers();
+    if (drones.size() == 1) {
+      return drones.stream().findFirst().get();
     }
 
     Optional<DroneIdentifier> firstNextIdentifier =
-        drones.keySet().parallelStream()
+        drones.parallelStream()
             .filter(id -> id.getId() > identifier.getId())
             .min(DroneIdentifier::compareTo);
     if (firstNextIdentifier.isPresent()) {
       return firstNextIdentifier.get();
     }
 
-    return drones.keySet().parallelStream().min(DroneIdentifier::compareTo).get();
+    return drones.parallelStream().min(DroneIdentifier::compareTo).get();
   }
 
   @Override
-  public synchronized void handleDroneUpdateData(DroneIdentifier identifier, DroneData data) {
-    if (!drones.containsKey(identifier)) {
-      Log.warn(
-          "Inserting data for drone #%d but drone was not recorded before%n", identifier.getId());
+  public void handleDroneUpdateData(DroneIdentifier identifier, DroneData data) {
+    synchronized (drones) {
+      if (!drones.containsKey(identifier)) {
+        Log.warn(
+            "Inserting data for drone #%d but drone was not recorded before%n", identifier.getId());
+      }
+      drones.put(identifier, data);
     }
-    drones.put(identifier, data);
   }
 
   @Override
@@ -59,11 +66,13 @@ public class InMemoryDroneStore implements DroneStore {
   }
 
   @Override
-  public synchronized void signalFailedCommunicationWithDrone(DroneIdentifier drone) {
+  public void signalFailedCommunicationWithDrone(DroneIdentifier drone) {
     Log.info("Master store was signalled that drone %s is not reachable.", drone);
-    drones.remove(drone);
-    if (drone.equals(knownMaster)) {
-      knownMaster = null;
+    synchronized (drones) {
+      drones.remove(drone);
+      if (drone.equals(knownMaster)) {
+        knownMaster = null;
+      }
     }
   }
 

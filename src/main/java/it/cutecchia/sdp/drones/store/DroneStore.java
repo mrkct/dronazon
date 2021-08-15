@@ -9,7 +9,11 @@ import java.util.Set;
 public interface DroneStore {
   Set<DroneIdentifier> getAllDroneIdentifiers();
 
-  void addDrone(DroneIdentifier identifier);
+  default void addDrone(DroneIdentifier identifier) {
+    addDrone(identifier, null);
+  }
+
+  void addDrone(DroneIdentifier identifier, DroneData startingData);
 
   void handleDroneUpdateData(DroneIdentifier identifier, DroneData data);
 

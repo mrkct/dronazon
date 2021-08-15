@@ -68,7 +68,6 @@ public class Drone implements DroneCommunicationServer {
     Log.notice("Drone %d# was accepted by the admin server", identifier.getId());
 
     allDrones.forEach(store::addDrone);
-    store.handleDroneUpdateData(identifier, new DroneData(position));
     localData = new DroneData(position);
 
     if (allDrones.size() == 1) {
@@ -82,6 +81,7 @@ public class Drone implements DroneCommunicationServer {
   @Override
   public DroneJoinResponse onDroneJoin(DroneIdentifier identifier, CityPoint startingPosition) {
     store.addDrone(identifier);
+    DataRaceTester.sleep();
     store.handleDroneUpdateData(identifier, new DroneData(startingPosition));
     Log.notice("A new drone (#%d) joined the ring at %s", identifier.getId(), startingPosition);
     currentState.onNewDroneJoin(identifier);

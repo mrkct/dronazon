@@ -1,16 +1,11 @@
 package it.cutecchia.sdp.drones.states;
 
 import it.cutecchia.sdp.admin.server.AdminServerClient;
-import it.cutecchia.sdp.common.DroneData;
-import it.cutecchia.sdp.common.DroneIdentifier;
-import it.cutecchia.sdp.common.Log;
-import it.cutecchia.sdp.common.Order;
+import it.cutecchia.sdp.common.*;
 import it.cutecchia.sdp.drones.*;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
 import it.cutecchia.sdp.drones.store.DroneStore;
 import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
 
 public class RingMasterState implements DroneState, OrderSource.OrderListener {
   private final Drone drone;
@@ -61,8 +56,7 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
   @Override
   public void start() {
     Log.notice("Master is requesting data from every other drone");
-    Set<DroneIdentifier> drones = new TreeSet<>(store.getAllDroneIdentifiers());
-    drones.parallelStream()
+    store.getAllDroneIdentifiers().parallelStream()
         .forEach(
             (destination) -> {
               Optional<DroneData> data = communicationClient.requestData(destination);
@@ -77,7 +71,7 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
               }
             });
     statsTracker.start();
-    /**
+    /*
      * Cheap fix: If we started the orderSource before sending the requestData then what could
      * happend is that we send a data request and a response with order=null is queued up in grpc,
      * except we also get an order first. We assign an order to that drone, process the data request
