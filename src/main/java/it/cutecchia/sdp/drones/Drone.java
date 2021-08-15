@@ -73,7 +73,11 @@ public class Drone implements DroneCommunicationServer {
     printStatsTimer.scheduleAtFixedRate(printStatsTask, 0, 10 * 1000);
   }
 
-  public void shutdown() {
+  private volatile boolean shutdownInitiated = false;
+
+  public synchronized void shutdown() {
+    if (shutdownInitiated) return;
+    shutdownInitiated = true;
     currentState.initiateShutdown();
   }
 

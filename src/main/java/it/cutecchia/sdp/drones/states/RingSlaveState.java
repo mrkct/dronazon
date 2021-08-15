@@ -85,7 +85,7 @@ public class RingSlaveState implements DroneState {
 
   @Override
   public void afterCompletingAnOrder() {
-    if (drone.getLocalData().isLowBattery()) initiateShutdown();
+    if (drone.getLocalData().isLowBattery()) drone.shutdown();
 
     if (shutdownInitiated) {
       DataRaceTester.sleep();
