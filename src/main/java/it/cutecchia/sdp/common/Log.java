@@ -8,25 +8,33 @@ public class Log {
 
   public static synchronized void info(String message, Object... args) {
     synchronized (System.out) {
-      System.out.printf(ANSI_RESET + "[INFO]: " + message + "%n", args);
+      synchronized (System.err) {
+        System.out.printf("[INFO]: " + message + "%n" + ANSI_RESET, args);
+      }
     }
   }
 
   public static synchronized void notice(String message, Object... args) {
     synchronized (System.out) {
-      System.out.printf(ANSI_BLUE + "[NOTICE]: " + message + "%n", args);
+      synchronized (System.err) {
+        System.out.printf(ANSI_BLUE + "[NOTICE]: " + message + "%n" + ANSI_RESET, args);
+      }
     }
   }
 
   public static synchronized void warn(String message, Object... args) {
-    synchronized (System.err) {
-      System.err.printf(ANSI_YELLOW + "[WARN]: " + message + "%n", args);
+    synchronized (System.out) {
+      synchronized (System.err) {
+        System.err.printf(ANSI_YELLOW + "[WARN]: " + message + "%n" + ANSI_RESET, args);
+      }
     }
   }
 
   public static synchronized void error(String message, Object... args) {
-    synchronized (System.err) {
-      System.err.printf(ANSI_RED + "[ERROR]: " + message + "%n", args);
+    synchronized (System.out) {
+      synchronized (System.err) {
+        System.err.printf(ANSI_RED + "[ERROR]: " + message + "%n" + ANSI_RESET, args);
+      }
     }
   }
 }
