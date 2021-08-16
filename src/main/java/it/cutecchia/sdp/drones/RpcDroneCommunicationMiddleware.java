@@ -81,10 +81,8 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
           getBlockingStub(destination).notifyDroneJoin(message);
       return Optional.of(DroneJoinResponse.fromProto(protoResponse));
     } catch (StatusRuntimeException e) {
-      Log.error(
-          "RPC Failed: notifyDroneJoin from #%d to #%d. Stack trace follows",
-          drone.getId(), destination.getId());
-      e.printStackTrace();
+      Log.warn(
+          "RPC Failed: notifyDroneJoin to #%d due to: %s", destination.getId(), e.getMessage());
     }
 
     return Optional.empty();
@@ -163,6 +161,16 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     }
   }
 
+  /**
+   * Send an ELECTION message to <code>destination</code> containing the other parameters as the
+   * current best candidate for the next master. This is blocking
+   *
+   * @param destination The drone that will receive the message
+   * @param candidateLeader The current best candidate for the position of master
+   * @param candidateLeaderBatteryPercentage The battery percentage of the candidate
+   * @return <code>true</code>if <code>destination</code> received the message successfully, <code>
+   *     false</code> if the communication failed somehow
+   */
   @Override
   public boolean forwardElectionMessage(
       DroneIdentifier destination,
@@ -185,6 +193,15 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     }
   }
 
+  /**
+   * Sends an ELECTED message to <code>destination</code> notifying that <code>newLeader</code> has
+   * been elected as the new master drone of the system
+   *
+   * @param destination The drone that will receive the message
+   * @param newLeader The drone that has been elected as the new leader of the system
+   * @return <code>true</code>if <code>destination</code> received the message successfully, <code>
+   *     false</code> if * the communication failed somehow
+   */
   @Override
   public boolean forwardElectedMessage(DroneIdentifier destination, DroneIdentifier newLeader) {
     DroneServiceOuterClass.ElectedMessage message =
@@ -199,6 +216,27 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     } catch (StatusRuntimeException e) {
       Log.warn(
           "Failed to send ELECTED message to %d due to: %s", destination.getId(), e.getMessage());
+      return false;
+    }
+  }
+
+  /**
+   * Sends an empty message to a drone and requests that it responds. This is used to check that a
+   * drone is alive and can respond to messages This is blocking
+   *
+   * @param destination The drone to which the message will be sent
+   * @return <code>true</code> if the drone responded, <code>false</code> if it was unreachable
+   */
+  @Override
+  public boolean requestHeartbeat(DroneIdentifier destination) {
+    try {
+      Log.info("Sending HEARTBEAT to %d", destination.getId());
+      getBlockingStub(destination).requestHeartbeat(empty());
+      Log.info("Received HEARTBEAT from %d", destination.getId());
+      return true;
+    } catch (StatusRuntimeException e) {
+      Log.warn(
+          "Failed to receive HEARTBEAT from %s due to: %s", destination.getId(), e.getMessage());
       return false;
     }
   }
@@ -299,6 +337,14 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
               DataRaceTester.sleep();
               droneServer.onElectedMessage(DroneIdentifier.fromProto(request.getNewLeader()));
             });
+  }
+
+  @Override
+  public void requestHeartbeat(
+      DroneServiceOuterClass.Empty request,
+      StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
+    responseObserver.onNext(empty());
+    responseObserver.onCompleted();
   }
 
   private DroneServiceOuterClass.Empty empty() {

@@ -74,6 +74,7 @@ service DroneService {
   rpc RequestData(Empty) returns (DroneDataPacket);
   rpc NotifyElectionMessage(ElectionMessage) returns (Empty);
   rpc NotifyElectedMessage(ElectedMessage) returns (Empty);
+  rpc RequestHeartbeat(Empty) returns (Empty);
 
   // Used only on the master
   rpc NotifyCompletedDelivery(CompletedDeliveryMessage) returns (Empty);

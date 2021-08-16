@@ -116,6 +116,7 @@ task runDrone(type: JavaExec) {
     description = "Run the main class of a Dronazon drone"
     classpath = sourceSets.main.runtimeClasspath
     main = "it.cutecchia.sdp.drones.Main"
+    standardInput = System.in
 
     java {
         toolchain {

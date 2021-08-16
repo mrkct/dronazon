@@ -9,6 +9,8 @@ import it.cutecchia.sdp.drones.responses.DroneJoinResponse;
 import java.util.Optional;
 
 public interface DroneCommunicationClient {
+  boolean requestHeartbeat(DroneIdentifier destination);
+
   Optional<DroneJoinResponse> notifyDroneJoin(
       DroneIdentifier destination, CityPoint startingPosition);
 

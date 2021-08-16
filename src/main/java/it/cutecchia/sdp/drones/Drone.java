@@ -17,6 +17,9 @@ import java.util.TimerTask;
 import java.util.function.Function;
 
 public class Drone implements DroneCommunicationServer {
+  private static final long MASTER_HEARTBEAT_PERIOD = 2 * 1000;
+  private static final long PRINT_STATS_PERIOD = 10 * 1000;
+
   private final AdminServerClient adminServerClient;
   private final DroneIdentifier identifier;
   private final OrderSource orderSource;
@@ -41,6 +44,15 @@ public class Drone implements DroneCommunicationServer {
               totalDeliveredOrders,
               totalTravelledDistance,
               getLocalData().getBatteryPercentage());
+        }
+      };
+
+  private final Timer masterHeartbeatTimer = new Timer();
+  private final TimerTask masterHeartbeat =
+      new TimerTask() {
+        @Override
+        public void run() {
+          deliverToMaster(middleware::requestHeartbeat, () -> {});
         }
       };
 
@@ -70,7 +82,7 @@ public class Drone implements DroneCommunicationServer {
     middleware.startRpcServer();
     currentState.start();
     pollutionTracker.startTracking();
-    printStatsTimer.scheduleAtFixedRate(printStatsTask, 0, 10 * 1000);
+    printStatsTimer.scheduleAtFixedRate(printStatsTask, 0, PRINT_STATS_PERIOD);
   }
 
   private volatile boolean shutdownInitiated = false;
@@ -99,6 +111,7 @@ public class Drone implements DroneCommunicationServer {
     } else {
       changeStateTo(new RingSlaveState(this, store, middleware, adminServerClient));
     }
+    masterHeartbeatTimer.scheduleAtFixedRate(masterHeartbeat, 0, MASTER_HEARTBEAT_PERIOD);
   }
 
   @Override
@@ -119,12 +132,14 @@ public class Drone implements DroneCommunicationServer {
 
   private void deliverToMaster(Function<DroneIdentifier, Boolean> send, Runnable onSuccess) {
     final DroneIdentifier knownMaster = store.getKnownMaster();
-    if (send.apply(knownMaster)) {
-      onSuccess.run();
-      return;
-    }
+    if (knownMaster != null) {
+      if (send.apply(knownMaster)) {
+        onSuccess.run();
+        return;
+      }
 
-    store.signalFailedCommunicationWithDrone(knownMaster);
+      store.signalFailedCommunicationWithDrone(knownMaster);
+    }
 
     electionManager.setOnNewMasterElectedListener(
         () -> {
