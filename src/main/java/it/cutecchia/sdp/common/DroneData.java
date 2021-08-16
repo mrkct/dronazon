@@ -60,8 +60,17 @@ public class DroneData {
     return new DroneData(position, batteryPercentage, order);
   }
 
+  public DroneData withoutOrder() {
+    assert this.assignedOrder != null;
+    return new DroneData(position, batteryPercentage, null);
+  }
+
   public int getBatteryPercentage() {
     return batteryPercentage;
+  }
+
+  public DroneData decrementBattery(int howMuch) {
+    return new DroneData(position, batteryPercentage - howMuch, assignedOrder);
   }
 
   public boolean isLowBattery() {

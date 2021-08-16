@@ -88,7 +88,7 @@ public class Drone implements DroneCommunicationServer {
   }
 
   public void onAdminServerAcceptance(CityPoint position, Set<DroneIdentifier> allDrones) {
-    Log.notice("Drone %d# was accepted by the admin server", identifier.getId());
+    Log.notice("Drone #%d was accepted by the admin server", identifier.getId());
 
     allDrones.forEach(store::addDrone);
     localData = new DroneData(position);
@@ -146,6 +146,7 @@ public class Drone implements DroneCommunicationServer {
     new Thread(
             () -> {
               Log.info("zzz for order %d", order.getId());
+              localData = localData.decrementBattery(10);
               try {
                 Thread.sleep(5 * 1000);
               } catch (InterruptedException e) {
@@ -166,16 +167,14 @@ public class Drone implements DroneCommunicationServer {
                       order,
                       distanceTravelledForThisOrder,
                       pollutionTracker.getMeasurements(),
-                      getLocalData().getBatteryPercentage() - 10);
+                      getLocalData().getBatteryPercentage());
 
               totalDeliveredOrders++;
               totalTravelledDistance += distanceTravelledForThisOrder;
 
               pollutionTracker.clearAllMeasurements();
 
-              localData =
-                  new DroneData(
-                      order.getDeliveryPoint(), getLocalData().getBatteryPercentage() - 10);
+              localData = localData.withoutOrder().moveTo(order.getDeliveryPoint());
 
               deliverToMaster(
                   (master) -> middleware.notifyCompletedDelivery(master, message),
