@@ -8,15 +8,22 @@ public class DroneData {
   private final CityPoint position;
   private final int batteryPercentage;
   private final Order assignedOrder;
+  private final boolean isRecharging;
 
-  public DroneData(CityPoint position, int batteryPercentage, Order assignedOrder) {
+  public DroneData(
+      CityPoint position, int batteryPercentage, Order assignedOrder, boolean isRecharging) {
     this.position = position;
     this.batteryPercentage = batteryPercentage;
     this.assignedOrder = assignedOrder;
+    this.isRecharging = isRecharging;
+  }
+
+  public DroneData(CityPoint position, int batteryPercentage, Order order) {
+    this(position, batteryPercentage, order, false);
   }
 
   public DroneData(CityPoint position, int batteryPercentage) {
-    this(position, batteryPercentage, null);
+    this(position, batteryPercentage, null, false);
   }
 
   public DroneData(CityPoint position) {
@@ -27,14 +34,16 @@ public class DroneData {
     return new DroneData(
         CityPoint.fromProto(proto.getPosition()),
         proto.getBatteryPercentage(),
-        proto.hasAssignedOrder() ? Order.fromProto(proto.getAssignedOrder()) : null);
+        proto.hasAssignedOrder() ? Order.fromProto(proto.getAssignedOrder()) : null,
+        proto.getIsRecharging());
   }
 
   public DroneServiceOuterClass.DroneDataPacket toProto() {
     DroneServiceOuterClass.DroneDataPacket.Builder builder =
         DroneServiceOuterClass.DroneDataPacket.newBuilder()
             .setPosition(position.toProto())
-            .setBatteryPercentage(batteryPercentage);
+            .setBatteryPercentage(batteryPercentage)
+            .setIsRecharging(isRecharging);
     if (assignedOrder != null) {
       builder.setAssignedOrder(assignedOrder.toProto());
     } else {
@@ -78,12 +87,21 @@ public class DroneData {
   }
 
   public boolean isAvailableForDeliveries() {
-    return !isLowBattery() && assignedOrder == null;
+    return !isLowBattery() && assignedOrder == null && !isRecharging;
+  }
+
+  public boolean isRecharging() {
+    return isRecharging;
+  }
+
+  public DroneData startRecharging() {
+    return new DroneData(position, batteryPercentage, assignedOrder, true);
   }
 
   @Override
   public String toString() {
     return String.format(
-        "<Position=%s, Battery=%d%%, Order=%s>", position, batteryPercentage, assignedOrder);
+        "<Position=%s, Battery=%d%%, Order=%s, recharge=%b>",
+        position, batteryPercentage, assignedOrder, isRecharging);
   }
 }

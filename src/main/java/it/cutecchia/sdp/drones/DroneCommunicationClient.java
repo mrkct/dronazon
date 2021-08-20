@@ -9,18 +9,16 @@ import it.cutecchia.sdp.drones.responses.DroneJoinResponse;
 import java.util.Optional;
 
 public interface DroneCommunicationClient {
+  class DroneIsUnreachable extends Exception {}
+
   boolean requestHeartbeat(DroneIdentifier destination);
 
   Optional<DroneJoinResponse> notifyDroneJoin(
       DroneIdentifier destination, CityPoint startingPosition);
 
-  boolean assignOrder(Order order, DroneIdentifier drone);
+  boolean assignOrder(Order order, DroneIdentifier drone) throws DroneIsUnreachable;
 
   boolean notifyCompletedDelivery(DroneIdentifier masterDrone, CompletedDeliveryMessage message);
-
-  interface DeliverToMasterCallback {
-    boolean trySending(DroneIdentifier master);
-  }
 
   Optional<DroneData> requestData(DroneIdentifier drone);
 
@@ -31,5 +29,9 @@ public interface DroneCommunicationClient {
 
   boolean forwardElectedMessage(DroneIdentifier destination, DroneIdentifier newLeader);
 
+  boolean notifyStatusUpdate(DroneIdentifier destination, DroneIdentifier sender, DroneData data);
+
   void shutdown();
+
+  void requestLock(DroneIdentifier destination, int logicalClock, DroneIdentifier requester);
 }

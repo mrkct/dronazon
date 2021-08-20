@@ -95,8 +95,13 @@ public class Main {
               Scanner keyboard = new Scanner(System.in);
               while (true) {
                 while (!keyboard.hasNextLine()) {}
-                if ("quit".equalsIgnoreCase(keyboard.nextLine().trim())) {
+                String input = keyboard.nextLine().trim();
+                System.out.printf(">>>          '%s'%n", input);
+                if ("quit".equalsIgnoreCase(input) || "q".equalsIgnoreCase(input)) {
                   break;
+                }
+                if ("recharge".equalsIgnoreCase(input) || "r".equalsIgnoreCase(input)) {
+                  drone.recharge();
                 }
               }
               keyboard.close();

@@ -78,11 +78,18 @@ public class InMemoryDroneStore implements DroneStore {
 
   @Override
   public void signalDroneWasAssignedOrder(@Nonnull DroneIdentifier drone, @Nonnull Order order) {
-    assert drones.containsKey(drone);
     assert getDroneData(drone).isPresent();
     assert getDroneData(drone).get().getAssignedOrder() == null;
 
     handleDroneUpdateData(drone, getDroneData(drone).get().withOrder(order));
+  }
+
+  @Override
+  public void signalDroneIsRecharging(DroneIdentifier drone) {
+    assert getDroneData(drone).isPresent();
+    assert !getDroneData(drone).get().isRecharging();
+
+    handleDroneUpdateData(drone, getDroneData(drone).get().startRecharging());
   }
 
   @Override

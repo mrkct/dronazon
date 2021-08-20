@@ -38,7 +38,7 @@ public class FleetStatsTracker extends Thread {
       };
 
   public void start() {
-    Log.warn("FleetStatsTracker start");
+    Log.info("FleetStatsTracker start");
     timer.schedule(calculateAndSendStatsTask, 0, 10 * 1000);
   }
 

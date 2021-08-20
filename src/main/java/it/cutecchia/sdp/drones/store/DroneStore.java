@@ -25,6 +25,8 @@ public interface DroneStore {
 
   void signalDroneWasAssignedOrder(DroneIdentifier drone, Order order);
 
+  void signalDroneIsRecharging(DroneIdentifier drone);
+
   void setKnownMaster(DroneIdentifier drone);
 
   DroneIdentifier getKnownMaster();

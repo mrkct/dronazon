@@ -119,15 +119,27 @@ public class OrderAssigner {
             entry -> {
               DroneIdentifier drone = entry.getKey();
               Order order = entry.getValue();
-              boolean successfullyAssigned = communicationClient.assignOrder(order, drone);
-              if (successfullyAssigned) {
-                Log.info("Order %d was accepted by drone #%d", order.getId(), drone.getId());
-              } else {
+              boolean successfullyAssigned = false;
+              try {
+                successfullyAssigned = communicationClient.assignOrder(order, drone);
+                if (!successfullyAssigned) {
+                  dronesStore.signalDroneIsRecharging(drone);
+                  Log.warn(
+                      "Order %d was refused by drone #%d because it is recharging",
+                      order.getId(), drone.getId());
+                } else {
+                  Log.info("Order %d was accepted by drone #%d", order.getId(), drone.getId());
+                }
+              } catch (DroneCommunicationClient.DroneIsUnreachable e) {
+                dronesStore.signalFailedCommunicationWithDrone(drone);
                 Log.warn(
                     "Failed to assign order %d to drone #%d. Re-adding order to queue...",
                     order.getId(), drone.getId());
-                dronesStore.signalFailedCommunicationWithDrone(drone);
-                enqueueOrder(order);
+              } finally {
+                if (!successfullyAssigned) {
+                  Log.info("Failed to assign order %d, re-adding to queue...", order.getId());
+                  enqueueOrder(order);
+                }
               }
             });
 

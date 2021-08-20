@@ -9,7 +9,7 @@ public class Log {
   private static final String ANSI_GREEN = "\033[32m";
   private static final String ANSI_RED = "\u001B[31m";
 
-  private static final int LOG_LEVEL = 5;
+  private static final int LOG_LEVEL = 3;
 
   public static synchronized void info(String message, Object... args) {
     if (LOG_LEVEL < 5) return;

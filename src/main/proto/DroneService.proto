@@ -25,6 +25,7 @@ message DroneDataPacket {
   int32 battery_percentage = 1;
   CityPointPacket position = 2;
   OrderPacket assigned_order = 3;
+  bool is_recharging = 4;
 }
 
 // Messages
@@ -41,6 +42,10 @@ message DroneJoinResponse {
 
 message AssignOrderMessage {
   OrderPacket order = 1;
+}
+
+message AssignOrderResponse {
+  bool accepted = 1;
 }
 
 message CompletedDeliveryMessage {
@@ -67,15 +72,27 @@ message ElectedMessage {
   DroneIdentifierPacket new_leader = 1;
 }
 
+message LockRequestMessage {
+  int32 logical_clock = 1;
+  DroneIdentifierPacket requester = 2;
+}
+
+message StatusUpdateMessage {
+  DroneIdentifierPacket sender = 1;
+  DroneDataPacket data = 2;
+}
+
 service DroneService {
   // Used by all drones
   rpc NotifyDroneJoin(DroneJoinMessage) returns (DroneJoinResponse);
-  rpc AssignOrder(AssignOrderMessage) returns (Empty);
+  rpc AssignOrder(AssignOrderMessage) returns (AssignOrderResponse);
   rpc RequestData(Empty) returns (DroneDataPacket);
   rpc NotifyElectionMessage(ElectionMessage) returns (Empty);
   rpc NotifyElectedMessage(ElectedMessage) returns (Empty);
   rpc RequestHeartbeat(Empty) returns (Empty);
+  rpc RequestLock(LockRequestMessage) returns (Empty);
 
   // Used only on the master
   rpc NotifyCompletedDelivery(CompletedDeliveryMessage) returns (Empty);
+  rpc NotifyStatusUpdate(StatusUpdateMessage) returns (Empty);
 }

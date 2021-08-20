@@ -92,13 +92,13 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
   public void initiateShutdown() {
     Log.notice("Master drone initiated the shutdown procedure");
 
-    doAsSoonAsThereIsNoOrderToDeliver(
+    drone.doWhenThereIsNoOrderToDeliver(
         () -> {
           Log.notice("Shutdown - No order to deliver");
           synchronized (drone) {
             if (drone.isDeliveringOrder()) {
               Log.notice("Unlucky, got a new one assigned just now");
-              return;
+              return false;
             }
             Log.notice("Order source was stopped. Waiting for all pending orders to be assigned");
             orderSource.stop();
@@ -106,12 +106,12 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
           orderAssigner.doAsSoonAsThereAreNoPendingOrders(
               () -> {
                 Log.notice("No more pending orders, waiting to deliver the very last order");
-                doAsSoonAsThereIsNoOrderToDeliver(
+                drone.doWhenThereIsNoOrderToDeliver(
                     () -> {
                       synchronized (drone) {
                         if (drone.isDeliveringOrder()) {
                           Log.notice("Delivering the very last order");
-                          return;
+                          return false;
                         }
                         Log.notice("Final shutdown phase - Closing all. Goodbye :)");
                         communicationClient.shutdown();
@@ -119,30 +119,15 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
                         adminServerClient.requestDroneExit(drone.getIdentifier());
                         System.exit(0);
                       }
+                      return true;
                     });
-                Log.notice("Second lambda - end");
               });
-          Log.notice("First lambda - end");
+          return true;
         });
-    Log.notice("initiateShutdown - end");
   }
 
-  private Runnable noOrderToDeliverCallback = null;
-
-  private void doAsSoonAsThereIsNoOrderToDeliver(Runnable callback) {
-    noOrderToDeliverCallback = callback;
-    synchronized (drone) {
-      if (!drone.isDeliveringOrder()) {
-        Log.notice("shortcut for asSoonAsThereIsNoOrderToDeliver");
-        noOrderToDeliverCallback.run();
-      }
-    }
-  }
-
+  @Override
   public void afterCompletingAnOrder() {
-    if (noOrderToDeliverCallback != null) {
-      noOrderToDeliverCallback.run();
-    }
     if (drone.getLocalData().isLowBattery()) drone.shutdown();
   }
 

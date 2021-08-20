@@ -56,6 +56,12 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     return DroneServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3, TimeUnit.SECONDS);
   }
 
+  private DroneServiceGrpc.DroneServiceBlockingStub getBlockingStubWithoutDeadline(
+      DroneIdentifier drone) {
+    ManagedChannel channel = getManagedChannel(drone);
+    return DroneServiceGrpc.newBlockingStub(channel);
+  }
+
   // The methods below this point are what a drone should call to do the operation
 
   /**
@@ -95,9 +101,12 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
    *
    * @param order The order you want to assign
    * @param drone The drone you would like to deliver the order
+   * @return <code>true</code> if the drone was reachable and accepted to deliver the order, <code>
+   *     false</code> if the drone received the request but refused to deliver the order
+   * @throws DroneIsUnreachable The drone is unreachable due to network issues
    */
   @Override
-  public boolean assignOrder(Order order, DroneIdentifier drone) {
+  public boolean assignOrder(Order order, DroneIdentifier drone) throws DroneIsUnreachable {
     DroneServiceOuterClass.AssignOrderMessage message =
         DroneServiceOuterClass.AssignOrderMessage.newBuilder().setOrder(order.toProto()).build();
     try {
@@ -106,13 +115,12 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
           .call(
               () -> {
                 DataRaceTester.sleep();
-                getBlockingStub(drone).assignOrder(message);
-                return true;
+                return getBlockingStub(drone).assignOrder(message).getAccepted();
               });
     } catch (Exception e) {
       Log.warn(
           "Failed to assign order with context %s due to: %s", Context.current(), e.getMessage());
-      return false;
+      throw new DroneIsUnreachable();
     }
   }
 
@@ -236,8 +244,45 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
       return true;
     } catch (StatusRuntimeException e) {
       Log.warn(
-          "Failed to receive HEARTBEAT from %s due to: %s", destination.getId(), e.getMessage());
+          "Failed to receive HEARTBEAT from %d due to: %s", destination.getId(), e.getMessage());
       return false;
+    }
+  }
+
+  @Override
+  public boolean notifyStatusUpdate(
+      DroneIdentifier destination, DroneIdentifier sender, DroneData data) {
+    try {
+      Log.info("Sending STATUS_UPDATE to %d", destination.getId());
+      DroneServiceOuterClass.StatusUpdateMessage message =
+          DroneServiceOuterClass.StatusUpdateMessage.newBuilder()
+              .setSender(sender.toProto())
+              .setData(data.toProto())
+              .build();
+      getBlockingStub(destination).notifyStatusUpdate(message);
+      return true;
+    } catch (StatusRuntimeException e) {
+      Log.warn(
+          "Failed to send STATUS_UPDATE (%s) to %d due to: %s",
+          data, destination.getId(), e.getMessage());
+      return false;
+    }
+  }
+
+  @Override
+  public void requestLock(
+      DroneIdentifier destination, int logicalClock, DroneIdentifier requester) {
+    try {
+      Log.info("Sending REQUEST_LOCK to %d", destination.getId());
+      DroneServiceOuterClass.LockRequestMessage message =
+          DroneServiceOuterClass.LockRequestMessage.newBuilder()
+              .setRequester(requester.toProto())
+              .setLogicalClock(logicalClock)
+              .build();
+      Log.debug("STO MANDANDO IL MESSAGGIO DI REQUEST_LOCK A %s", destination);
+      getBlockingStubWithoutDeadline(destination).requestLock(message);
+    } catch (StatusRuntimeException e) {
+      Log.warn("Failed to send REQUEST_LOCK to %d due to: %s", destination.getId(), e.getMessage());
     }
   }
 
@@ -271,13 +316,15 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   @Override
   public void assignOrder(
       DroneServiceOuterClass.AssignOrderMessage request,
-      StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
+      StreamObserver<DroneServiceOuterClass.AssignOrderResponse> responseObserver) {
     DataRaceTester.sleep();
     Order order = Order.fromProto(request.getOrder());
 
-    Context.current().fork().run(() -> droneServer.onOrderAssigned(order));
+    boolean acceptOrder = droneServer.onOrderAssigned(order);
+    DroneServiceOuterClass.AssignOrderResponse message =
+        DroneServiceOuterClass.AssignOrderResponse.newBuilder().setAccepted(acceptOrder).build();
 
-    responseObserver.onNext(empty());
+    responseObserver.onNext(message);
     responseObserver.onCompleted();
   }
 
@@ -345,6 +392,32 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
       StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
     responseObserver.onNext(empty());
     responseObserver.onCompleted();
+  }
+
+  @Override
+  public void requestLock(
+      DroneServiceOuterClass.LockRequestMessage request,
+      StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
+    // onLockRequest will block until the lock is available. We have removed the deadline from this
+    // request
+
+    droneServer.onLockRequest(
+        request.getLogicalClock(), DroneIdentifier.fromProto(request.getRequester()));
+
+    responseObserver.onNext(empty());
+    responseObserver.onCompleted();
+  }
+
+  @Override
+  public void notifyStatusUpdate(
+      DroneServiceOuterClass.StatusUpdateMessage request,
+      StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
+    responseObserver.onNext(empty());
+    responseObserver.onCompleted();
+
+    DataRaceTester.sleep();
+    droneServer.onStatusUpdate(
+        DroneIdentifier.fromProto(request.getSender()), DroneData.fromProto(request.getData()));
   }
 
   private DroneServiceOuterClass.Empty empty() {

@@ -11,7 +11,7 @@ import it.cutecchia.sdp.drones.responses.DroneJoinResponse;
 public interface DroneCommunicationServer {
   DroneJoinResponse onDroneJoin(DroneIdentifier identifier, CityPoint startingPosition);
 
-  void onOrderAssigned(Order order);
+  boolean onOrderAssigned(Order order);
 
   void onCompletedDeliveryNotification(CompletedDeliveryMessage message);
 
@@ -20,4 +20,8 @@ public interface DroneCommunicationServer {
   void onElectionMessage(DroneIdentifier candidateLeader, int candidateBatteryPercentage);
 
   void onElectedMessage(DroneIdentifier newLeader);
+
+  void onLockRequest(int logicalClock, DroneIdentifier requester);
+
+  void onStatusUpdate(DroneIdentifier sender, DroneData updatedData);
 }

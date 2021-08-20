@@ -11,7 +11,8 @@ import org.junit.jupiter.api.Test;
 
 public class OrderAssignerTest {
   @Test
-  public void closestDroneIsChosen() throws InterruptedException {
+  public void closestDroneIsChosen()
+      throws InterruptedException, DroneCommunicationClient.DroneIsUnreachable {
     DroneIdentifier closestDroneId = new DroneIdentifier(0, "123", 123);
     DroneIdentifier otherDroneId = new DroneIdentifier(1, "123", 123);
     DroneIdentifier otherDroneId2 = new DroneIdentifier(2, "123", 123);
@@ -41,7 +42,7 @@ public class OrderAssignerTest {
 
   @Test
   public void highestBatteryDroneIsChosenWhenTheyHaveTheSameDistanceToTheOrder()
-      throws InterruptedException {
+      throws InterruptedException, DroneCommunicationClient.DroneIsUnreachable {
     DroneIdentifier highestBatteryDrone = new DroneIdentifier(0, "123", 123);
     DroneIdentifier otherDroneId = new DroneIdentifier(1, "123", 123);
     DroneIdentifier otherDroneId2 = new DroneIdentifier(2, "123", 123);
@@ -71,7 +72,7 @@ public class OrderAssignerTest {
 
   @Test
   public void highestIdDroneIsChosenWhenTheyHaveTheSameDistanceAndSameBatteryLevel()
-      throws InterruptedException {
+      throws InterruptedException, DroneCommunicationClient.DroneIsUnreachable {
     DroneIdentifier highestIdDrone = new DroneIdentifier(4, "123", 123);
     DroneIdentifier otherDroneId = new DroneIdentifier(3, "123", 123);
     DroneIdentifier otherDroneId2 = new DroneIdentifier(2, "123", 123);
