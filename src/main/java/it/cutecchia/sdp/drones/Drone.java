@@ -90,6 +90,10 @@ public class Drone implements DroneCommunicationServer {
     pollutionTracker.startTracking();
   }
 
+  public void printStats() {
+    printStatsTask.run();
+  }
+
   private volatile boolean shutdownInitiated = false;
 
   public synchronized void shutdown() {
@@ -328,8 +332,7 @@ public class Drone implements DroneCommunicationServer {
 
   @Override
   public void onStatusUpdate(DroneIdentifier sender, DroneData updatedData) {
-    Log.debug("Received STATUS_UPDATE from %s with %s", sender, updatedData);
-    store.handleDroneUpdateData(sender, updatedData);
+    currentState.onDroneStatusUpdate(sender, updatedData);
   }
 
   public void becomeMaster() {

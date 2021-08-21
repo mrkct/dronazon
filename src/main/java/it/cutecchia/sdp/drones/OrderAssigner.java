@@ -1,9 +1,6 @@
 package it.cutecchia.sdp.drones;
 
-import it.cutecchia.sdp.common.DroneData;
-import it.cutecchia.sdp.common.DroneIdentifier;
-import it.cutecchia.sdp.common.Log;
-import it.cutecchia.sdp.common.Order;
+import it.cutecchia.sdp.common.*;
 import it.cutecchia.sdp.drones.store.DroneStore;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -48,6 +45,10 @@ public class OrderAssigner {
   }
 
   public void notifyNewDroneJoined() {
+    attemptAssigningOrders();
+  }
+
+  public void notifyDroneFinishedRecharging() {
     attemptAssigningOrders();
   }
 
@@ -114,34 +115,34 @@ public class OrderAssigner {
       assignedOrders.put(drone, order);
     }
 
-    assignedOrders.entrySet().parallelStream()
-        .forEach(
-            entry -> {
-              DroneIdentifier drone = entry.getKey();
-              Order order = entry.getValue();
-              boolean successfullyAssigned = false;
-              try {
-                successfullyAssigned = communicationClient.assignOrder(order, drone);
-                if (!successfullyAssigned) {
-                  dronesStore.signalDroneIsRecharging(drone);
-                  Log.warn(
-                      "Order %d was refused by drone #%d because it is recharging",
-                      order.getId(), drone.getId());
-                } else {
-                  Log.info("Order %d was accepted by drone #%d", order.getId(), drone.getId());
-                }
-              } catch (DroneCommunicationClient.DroneIsUnreachable e) {
-                dronesStore.signalFailedCommunicationWithDrone(drone);
-                Log.warn(
-                    "Failed to assign order %d to drone #%d. Re-adding order to queue...",
-                    order.getId(), drone.getId());
-              } finally {
-                if (!successfullyAssigned) {
-                  Log.info("Failed to assign order %d, re-adding to queue...", order.getId());
-                  enqueueOrder(order);
-                }
-              }
-            });
+    ThreadUtils.spawnThreadForEach(
+        assignedOrders.entrySet(),
+        (entry) -> {
+          DroneIdentifier drone = entry.getKey();
+          Order order = entry.getValue();
+          boolean successfullyAssigned = false;
+          try {
+            successfullyAssigned = communicationClient.assignOrder(order, drone);
+            if (!successfullyAssigned) {
+              dronesStore.signalDroneIsRecharging(drone);
+              Log.warn(
+                  "Order %d was refused by drone #%d because it is recharging",
+                  order.getId(), drone.getId());
+            } else {
+              Log.info("Order %d was accepted by drone #%d", order.getId(), drone.getId());
+            }
+          } catch (DroneCommunicationClient.DroneIsUnreachable e) {
+            dronesStore.signalFailedCommunicationWithDrone(drone);
+            Log.warn(
+                "Failed to assign order %d to drone #%d. Re-adding order to queue...",
+                order.getId(), drone.getId());
+          } finally {
+            if (!successfullyAssigned) {
+              Log.info("Failed to assign order %d, re-adding to queue...", order.getId());
+              enqueueOrder(order);
+            }
+          }
+        });
 
     Log.info(
         "OrderAssigner: Completed. Available drones: %d, pending orders: %d",

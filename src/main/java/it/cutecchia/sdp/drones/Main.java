@@ -98,14 +98,15 @@ public class Main {
                 String input = keyboard.nextLine().trim();
                 System.out.printf(">>>          '%s'%n", input);
                 if ("quit".equalsIgnoreCase(input) || "q".equalsIgnoreCase(input)) {
-                  break;
+                  drone.shutdown();
                 }
                 if ("recharge".equalsIgnoreCase(input) || "r".equalsIgnoreCase(input)) {
                   drone.recharge();
                 }
+                if ("stats".equalsIgnoreCase(input) || "s".equalsIgnoreCase(input)) {
+                  drone.printStats();
+                }
               }
-              keyboard.close();
-              drone.shutdown();
             });
 
     Thread droneThread =

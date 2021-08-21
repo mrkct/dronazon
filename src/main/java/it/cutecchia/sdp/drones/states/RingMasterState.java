@@ -127,6 +127,13 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
   }
 
   @Override
+  public void onDroneStatusUpdate(DroneIdentifier sender, DroneData updatedData) {
+    Log.debug("Received STATUS_UPDATE from %s with %s", sender, updatedData);
+    store.handleDroneUpdateData(sender, updatedData);
+    orderAssigner.notifyDroneFinishedRecharging();
+  }
+
+  @Override
   public void afterCompletingAnOrder() {
     if (drone.getLocalData().isLowBattery()) drone.shutdown();
   }
