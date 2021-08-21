@@ -2,6 +2,7 @@ package it.cutecchia.sdp.drones;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import simulators.Buffer;
 import simulators.Measurement;
 import simulators.PM10Simulator;
@@ -9,7 +10,9 @@ import simulators.PM10Simulator;
 public class PollutionTracker implements Buffer, SlidingWindow.OnFullWindowAvailable {
   private final SlidingWindow slidingWindow = new SlidingWindow(8, 4, this);
   private final PM10Simulator simulator = new PM10Simulator(this);
-  private final List<Double> averageValues = new ArrayList<>();
+
+  private final Object averageMeasurementsLock = new Object();
+  private List<Measurement> averageMeasurements = new ArrayList<>();
 
   public void startTracking() {
     simulator.start();
@@ -26,7 +29,11 @@ public class PollutionTracker implements Buffer, SlidingWindow.OnFullWindowAvail
       average += m.getValue();
     }
     average /= measurements.size();
-    averageValues.add(average);
+
+    Measurement measurement = new Measurement("0", "average", average, System.currentTimeMillis());
+    synchronized (averageMeasurementsLock) {
+      averageMeasurements.add(measurement);
+    }
   }
 
   @Override
@@ -36,18 +43,15 @@ public class PollutionTracker implements Buffer, SlidingWindow.OnFullWindowAvail
 
   @Override
   public List<Measurement> readAllAndClean() {
-    // FIXME: Don't know what to do with this
-    return null;
-  }
-
-  public void clearAllMeasurements() {
-    slidingWindow.clear();
-    averageValues.clear();
-  }
-
-  public List<Double> getMeasurements() {
-    synchronized (averageValues) {
-      return new ArrayList<>(averageValues);
+    List<Measurement> toReturn = averageMeasurements;
+    synchronized (averageMeasurementsLock) {
+      averageMeasurements = new ArrayList<>();
     }
+
+    return toReturn;
+  }
+
+  public List<Double> readAllAndCleanAsDoubles() {
+    return readAllAndClean().stream().map(Measurement::getValue).collect(Collectors.toList());
   }
 }

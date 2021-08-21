@@ -42,12 +42,13 @@ public class Drone implements DroneCommunicationServer {
       new TimerTask() {
         @Override
         public void run() {
-          Log.notice(
-              "%d#: Total delivered orders: %d\tDistance travelled: %3f\tRemaining battery: %d%%",
+          Log.userMessage(
+              "%d#: Total delivered orders: %d\tDistance travelled: %3f\tRemaining battery: %d%% Master? %s%",
               identifier.getId(),
               totalDeliveredOrders,
               totalTravelledDistance,
-              getLocalData().getBatteryPercentage());
+              getLocalData().getBatteryPercentage(),
+              currentState.isMaster() ? "yes" : "no");
         }
       };
 
@@ -107,14 +108,14 @@ public class Drone implements DroneCommunicationServer {
     assert !shutdownInitiated;
     new Thread(
             () -> {
-              Log.debug("Attempting to take the lock");
+              Log.userMessage("Waiting to get permission to recharge from all other drones...");
               chargingAreaLock.take();
               DataRaceTester.sleep();
               Log.debug("Took the lock!");
 
               DataRaceTester.sleep();
 
-              Log.debug("%d: Will start recharging soon", System.currentTimeMillis());
+              Log.userMessage("I will recharge as soon as I complete my order");
               doWhenThereIsNoOrderToDeliver(
                   () -> {
                     synchronized (this) {
@@ -127,7 +128,8 @@ public class Drone implements DroneCommunicationServer {
                       }
                     }
 
-                    Log.debug("%d: Starting the recharge. Sleeping...", System.currentTimeMillis());
+                    Log.userMessage(
+                        "%d: Starting the recharge. Sleeping...", System.currentTimeMillis());
                     try {
                       assert chargingAreaLock.isOwned();
                       assert !isDeliveringOrder();
@@ -139,6 +141,7 @@ public class Drone implements DroneCommunicationServer {
                       }
                     } finally {
                       chargingAreaLock.release();
+                      Log.userMessage("%d: I have finished recharging", System.currentTimeMillis());
                       DataRaceTester.sleep();
 
                       localData = new DroneData(new CityPoint(0, 0), 100);
@@ -166,7 +169,7 @@ public class Drone implements DroneCommunicationServer {
   }
 
   public void onAdminServerAcceptance(CityPoint position, Set<DroneIdentifier> allDrones) {
-    Log.notice("Drone #%d was accepted by the admin server", identifier.getId());
+    Log.userMessage("Drone #%d was accepted by the admin server", identifier.getId());
 
     synchronized (localDataLock) {
       localData = new DroneData(position);
@@ -231,7 +234,8 @@ public class Drone implements DroneCommunicationServer {
       return false;
     }
 
-    Log.info("%d: I was assigned order %s. Delivering...", System.currentTimeMillis(), order);
+    Log.userMessage(
+        "%d: I was assigned order %s. Delivering...", System.currentTimeMillis(), order);
     assert !isDeliveringOrder();
 
     synchronized (localDataLock) {
@@ -252,7 +256,7 @@ public class Drone implements DroneCommunicationServer {
                 e.printStackTrace();
               }
 
-              Log.info(
+              Log.userMessage(
                   "%d: Delivered order %s. Sending confirmation message...",
                   System.currentTimeMillis(), order);
 
@@ -265,13 +269,11 @@ public class Drone implements DroneCommunicationServer {
                       getIdentifier(),
                       order,
                       distanceTravelledForThisOrder,
-                      pollutionTracker.getMeasurements(),
+                      pollutionTracker.readAllAndCleanAsDoubles(),
                       getLocalData().getBatteryPercentage());
 
               totalDeliveredOrders++;
               totalTravelledDistance += distanceTravelledForThisOrder;
-
-              pollutionTracker.clearAllMeasurements();
 
               synchronized (localDataLock) {
                 localData = localData.withoutOrder().moveTo(order.getDeliveryPoint());

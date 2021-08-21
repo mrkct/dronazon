@@ -54,4 +54,12 @@ public class Log {
       }
     }
   }
+
+  public static synchronized void userMessage(String message, Object... args) {
+    synchronized (System.out) {
+      synchronized (System.err) {
+        System.out.printf(ANSI_MAGENTA + message + "%n" + ANSI_RESET, args);
+      }
+    }
+  }
 }
