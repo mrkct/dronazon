@@ -7,7 +7,6 @@ import javax.annotation.Nonnull;
 import org.eclipse.paho.client.mqttv3.*;
 
 public class MqttOrderSource implements OrderSource, MqttCallback {
-  // FIXME: Guarda se questo valore va bene, non lo so
   private static final int QOS = 2;
   private static final Gson gson = new Gson();
 
