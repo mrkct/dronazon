@@ -31,6 +31,15 @@ public class Drone implements DroneCommunicationServer {
   private final ElectionManager electionManager;
   private final DistributedLock chargingAreaLock;
 
+  private enum ChargingStatus {
+    NOT_REQUESTED,
+    WAITING_TO_RECHARGE,
+    SLEEPING,
+    FINALIZING
+  }
+
+  private ChargingStatus chargingStatus = ChargingStatus.NOT_REQUESTED;
+
   private volatile DroneState currentState;
   private final Object localDataLock = new Object();
   private volatile DroneData localData;
@@ -97,21 +106,40 @@ public class Drone implements DroneCommunicationServer {
 
   private volatile boolean shutdownInitiated = false;
 
-  public synchronized void shutdown() {
-    if (shutdownInitiated) return;
+  public synchronized boolean shutdown() {
+    if (shutdownInitiated) {
+      return false;
+    }
+
+    Log.userMessage("This drone has initiated the shutdown procedure");
+
     shutdownInitiated = true;
     currentState.initiateShutdown();
+
+    return true;
   }
 
   public synchronized void recharge() {
+    if (shutdownInitiated) {
+      Log.userMessage("This drone cannot recharge because it has initiated the shutdown procedure");
+      return;
+    }
+
+    if (chargingStatus != ChargingStatus.NOT_REQUESTED) {
+      Log.userMessage(
+          "Wait for the previous recharge request to finish before requesting another recharge!");
+      return;
+    }
+
+    chargingStatus = ChargingStatus.WAITING_TO_RECHARGE;
     assert !chargingAreaLock.isOwned();
-    assert !shutdownInitiated;
     new Thread(
             () -> {
               Log.userMessage("Waiting to get permission to recharge from all other drones...");
               chargingAreaLock.take();
               DataRaceTester.sleep();
               Log.debug("Took the lock!");
+              chargingStatus = ChargingStatus.SLEEPING;
 
               DataRaceTester.sleep();
 
@@ -134,6 +162,7 @@ public class Drone implements DroneCommunicationServer {
                       assert chargingAreaLock.isOwned();
                       assert !isDeliveringOrder();
 
+                      chargingStatus = ChargingStatus.SLEEPING;
                       try {
                         Thread.sleep(TIME_TO_RECHARGE);
                       } catch (InterruptedException e) {
@@ -141,6 +170,7 @@ public class Drone implements DroneCommunicationServer {
                       }
                     } finally {
                       chargingAreaLock.release();
+                      chargingStatus = ChargingStatus.FINALIZING;
                       Log.userMessage("%d: I have finished recharging", System.currentTimeMillis());
                       DataRaceTester.sleep();
 
@@ -154,6 +184,7 @@ public class Drone implements DroneCommunicationServer {
                           },
                           () -> {
                             Log.debug("Notified that I'm done recharging to master");
+                            chargingStatus = ChargingStatus.NOT_REQUESTED;
                           });
                     }
                     return true;
@@ -278,6 +309,9 @@ public class Drone implements DroneCommunicationServer {
               synchronized (localDataLock) {
                 localData = localData.withoutOrder().moveTo(order.getDeliveryPoint());
               }
+
+              // FIXME: Stiamo chiamando due volte runNoOrderToDeliverCallbackInAnotherThread se
+              // siamo sfortunati
 
               deliverToMaster(
                   (master) -> {

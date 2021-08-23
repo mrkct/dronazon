@@ -98,7 +98,9 @@ public class Main {
                 String input = keyboard.nextLine().trim();
                 System.out.printf(">>>          '%s'%n", input);
                 if ("quit".equalsIgnoreCase(input) || "q".equalsIgnoreCase(input)) {
-                  drone.shutdown();
+                  if (!drone.shutdown()) {
+                    Log.userMessage("This drone is already shutting down!");
+                  }
                 }
                 if ("recharge".equalsIgnoreCase(input) || "r".equalsIgnoreCase(input)) {
                   drone.recharge();
