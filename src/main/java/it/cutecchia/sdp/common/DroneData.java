@@ -8,22 +8,22 @@ public class DroneData {
   private final CityPoint position;
   private final int batteryPercentage;
   private final Order assignedOrder;
-  private final boolean isRecharging;
+  private final boolean canAcceptOrders;
 
   public DroneData(
-      CityPoint position, int batteryPercentage, Order assignedOrder, boolean isRecharging) {
+      CityPoint position, int batteryPercentage, Order assignedOrder, boolean canAcceptOrders) {
     this.position = position;
     this.batteryPercentage = batteryPercentage;
     this.assignedOrder = assignedOrder;
-    this.isRecharging = isRecharging;
+    this.canAcceptOrders = canAcceptOrders;
   }
 
   public DroneData(CityPoint position, int batteryPercentage, Order order) {
-    this(position, batteryPercentage, order, false);
+    this(position, batteryPercentage, order, true);
   }
 
   public DroneData(CityPoint position, int batteryPercentage) {
-    this(position, batteryPercentage, null, false);
+    this(position, batteryPercentage, null);
   }
 
   public DroneData(CityPoint position) {
@@ -35,7 +35,7 @@ public class DroneData {
         CityPoint.fromProto(proto.getPosition()),
         proto.getBatteryPercentage(),
         proto.hasAssignedOrder() ? Order.fromProto(proto.getAssignedOrder()) : null,
-        proto.getIsRecharging());
+        proto.getCanAcceptOrders());
   }
 
   public DroneServiceOuterClass.DroneDataPacket toProto() {
@@ -43,7 +43,7 @@ public class DroneData {
         DroneServiceOuterClass.DroneDataPacket.newBuilder()
             .setPosition(position.toProto())
             .setBatteryPercentage(batteryPercentage)
-            .setIsRecharging(isRecharging);
+            .setCanAcceptOrders(canAcceptOrders);
     if (assignedOrder != null) {
       builder.setAssignedOrder(assignedOrder.toProto());
     } else {
@@ -87,21 +87,21 @@ public class DroneData {
   }
 
   public boolean isAvailableForDeliveries() {
-    return !isLowBattery() && assignedOrder == null && !isRecharging;
+    return !isLowBattery() && assignedOrder == null && canAcceptOrders();
   }
 
-  public boolean isRecharging() {
-    return isRecharging;
+  public boolean canAcceptOrders() {
+    return canAcceptOrders;
   }
 
-  public DroneData startRecharging() {
+  public DroneData refuseOrders() {
     return new DroneData(position, batteryPercentage, assignedOrder, true);
   }
 
   @Override
   public String toString() {
     return String.format(
-        "<Position=%s, Battery=%d%%, Order=%s, recharge=%b>",
-        position, batteryPercentage, assignedOrder, isRecharging);
+        "<Position=%s, Battery=%d%%, Order=%s, AcceptsOrders=%b>",
+        position, batteryPercentage, assignedOrder, canAcceptOrders);
   }
 }

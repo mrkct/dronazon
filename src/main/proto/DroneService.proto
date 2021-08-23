@@ -25,7 +25,7 @@ message DroneDataPacket {
   int32 battery_percentage = 1;
   CityPointPacket position = 2;
   OrderPacket assigned_order = 3;
-  bool is_recharging = 4;
+  bool can_accept_orders = 4;
 }
 
 // Messages

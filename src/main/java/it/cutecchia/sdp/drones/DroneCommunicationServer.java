@@ -7,7 +7,6 @@ import it.cutecchia.sdp.common.Order;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
 import it.cutecchia.sdp.drones.responses.DroneJoinResponse;
 
-// FIXME: Rename into something better (somethingService?)
 public interface DroneCommunicationServer {
   DroneJoinResponse onDroneJoin(DroneIdentifier identifier, CityPoint startingPosition);
 

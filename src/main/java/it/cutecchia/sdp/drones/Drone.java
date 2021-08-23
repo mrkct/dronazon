@@ -137,8 +137,17 @@ public class Drone implements DroneCommunicationServer {
             () -> {
               Log.userMessage("Waiting to get permission to recharge from all other drones...");
               chargingAreaLock.take();
+              // FIXME: Sono dentro .take() l'istruzione prima di lockStatus = OWNED e
+              // onOrderAssigned passa il check
+
+              synchronized (this) {
+                synchronized (localDataLock) {
+                  localData = localData.refuseOrders();
+                }
+              }
               DataRaceTester.sleep();
               Log.debug("Took the lock!");
+
               chargingStatus = ChargingStatus.SLEEPING;
 
               DataRaceTester.sleep();
@@ -146,21 +155,12 @@ public class Drone implements DroneCommunicationServer {
               Log.userMessage("I will recharge as soon as I complete my order");
               doWhenThereIsNoOrderToDeliver(
                   () -> {
-                    synchronized (this) {
-                      if (isDeliveringOrder()) {
-                        return false;
-                      }
-
-                      synchronized (localDataLock) {
-                        localData = localData.startRecharging();
-                      }
-                    }
+                    assert !isDeliveringOrder();
 
                     Log.userMessage(
                         "%d: Starting the recharge. Sleeping...", System.currentTimeMillis());
                     try {
                       assert chargingAreaLock.isOwned();
-                      assert !isDeliveringOrder();
 
                       chargingStatus = ChargingStatus.SLEEPING;
                       try {
@@ -174,7 +174,18 @@ public class Drone implements DroneCommunicationServer {
                       Log.userMessage("%d: I have finished recharging", System.currentTimeMillis());
                       DataRaceTester.sleep();
 
-                      localData = new DroneData(new CityPoint(0, 0), 100);
+                      // FIXME: Arriva una assign order appena dopo questa istruzione. Rispondiamo
+                      // immediatamente
+                      // accettando, il master si segna che abbiamo l'order. Poi riceve lo
+                      // STATUS_UPDATE e si segna
+                      // che siamo a (0,0) con 100% batteria e cancella l'ordine...
+
+                      // Invece di statusUpdate potrebbe essere un semplice doneRecharging
+                      synchronized (this) {
+                        synchronized (localDataLock) {
+                          localData = new DroneData(new CityPoint(0, 0), 100);
+                        }
+                      }
 
                       deliverToMaster(
                           (master) -> {
@@ -260,7 +271,7 @@ public class Drone implements DroneCommunicationServer {
 
   @Override
   public synchronized boolean onOrderAssigned(Order order) {
-    if (chargingAreaLock.isOwned() || localData.isRecharging()) {
+    if (!localData.canAcceptOrders()) {
       Log.info("Refusing to deliver order %s because I'm recharging", order.getId());
       return false;
     }

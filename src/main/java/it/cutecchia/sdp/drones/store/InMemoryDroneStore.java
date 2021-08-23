@@ -85,9 +85,9 @@ public class InMemoryDroneStore implements DroneStore {
   @Override
   public void signalDroneIsRecharging(DroneIdentifier drone) {
     assert getDroneData(drone).isPresent();
-    assert !getDroneData(drone).get().isRecharging();
+    assert getDroneData(drone).get().canAcceptOrders();
 
-    handleDroneUpdateData(drone, getDroneData(drone).get().startRecharging());
+    handleDroneUpdateData(drone, getDroneData(drone).get().refuseOrders());
   }
 
   @Override
