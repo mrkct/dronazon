@@ -2,6 +2,7 @@ package it.cutecchia.sdp.drones.states;
 
 import it.cutecchia.sdp.admin.server.AdminServerClient;
 import it.cutecchia.sdp.admin.server.messages.DroneEnterResponse;
+import it.cutecchia.sdp.common.Log;
 import it.cutecchia.sdp.drones.Drone;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
 
@@ -39,8 +40,10 @@ public class StartupState implements DroneState {
       DroneEnterResponse response = client.requestDroneToEnter(drone.getIdentifier());
       drone.onAdminServerAcceptance(response.getNewlyAddedDronePosition(), response.getAllDrones());
     } catch (AdminServerClient.DroneIdAlreadyInUse e) {
-      // FIXME: Change state to Fatal?
-      System.err.println("Oh no: id already in use");
+      Log.userMessage(
+          "Drone id #%d is already in use on the server", drone.getIdentifier().getId());
+      Log.userMessage("Choose a different id and restart the drone");
+      System.exit(-1);
     }
   }
 
