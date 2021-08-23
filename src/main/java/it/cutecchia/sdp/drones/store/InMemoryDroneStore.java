@@ -8,8 +8,6 @@ import java.util.*;
 import javax.annotation.Nonnull;
 
 public class InMemoryDroneStore implements DroneStore {
-  // FIXME: Instead of DroneIdentifier use an int, otherwise if another drone comes with different
-  // address/port re-using the same id we might have consistency problems
   private final Map<DroneIdentifier, DroneData> drones = new HashMap<>();
   private DroneIdentifier knownMaster = null;
 

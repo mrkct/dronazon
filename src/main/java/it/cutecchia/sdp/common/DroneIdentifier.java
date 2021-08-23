@@ -1,7 +1,6 @@
 package it.cutecchia.sdp.common;
 
 import it.cutecchia.sdp.drones.grpc.DroneServiceOuterClass;
-import java.util.Objects;
 import javax.annotation.Nonnull;
 import javax.xml.bind.annotation.XmlRootElement;
 
@@ -64,6 +63,6 @@ public class DroneIdentifier implements Comparable<DroneIdentifier> {
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, ipAddress, connectionPort);
+    return id;
   }
 }
