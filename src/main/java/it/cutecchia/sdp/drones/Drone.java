@@ -137,8 +137,6 @@ public class Drone implements DroneCommunicationServer {
             () -> {
               Log.userMessage("Waiting to get permission to recharge from all other drones...");
               chargingAreaLock.take();
-              // FIXME: Sono dentro .take() l'istruzione prima di lockStatus = OWNED e
-              // onOrderAssigned passa il check
 
               synchronized (this) {
                 synchronized (localDataLock) {
@@ -321,17 +319,14 @@ public class Drone implements DroneCommunicationServer {
                 localData = localData.withoutOrder().moveTo(order.getDeliveryPoint());
               }
 
-              // FIXME: Stiamo chiamando due volte runNoOrderToDeliverCallbackInAnotherThread se
-              // siamo sfortunati
-
               deliverToMaster(
                   (master) -> {
                     Log.debug("deliverToMaster because of order completion");
                     return middleware.notifyCompletedDelivery(master, message);
                   },
                   () -> {
-                    if (noOrderToDeliverCallback != null) {
-                      runNoOrderToDeliverCallbackInAnotherThread();
+                    synchronized (noOrderToDeliverCallbackLock) {
+                      noOrderToDeliverCallbackLock.notifyAll();
                     }
                     currentState.afterCompletingAnOrder();
                     Log.notice(
@@ -388,7 +383,6 @@ public class Drone implements DroneCommunicationServer {
   }
 
   private final Object noOrderToDeliverCallbackLock = new Object();
-  private BooleanSupplier noOrderToDeliverCallback = null;
 
   /**
    * Takes a function that will be executed every time an order is completed and immediately if the
@@ -402,24 +396,20 @@ public class Drone implements DroneCommunicationServer {
    *     completed, otherwise it won't be called again until the next invocation of this method
    */
   public void doWhenThereIsNoOrderToDeliver(BooleanSupplier callback) {
-    synchronized (noOrderToDeliverCallbackLock) {
-      noOrderToDeliverCallback = callback;
-      if (!isDeliveringOrder()) {
-        Log.debug("shortcut for asSoonAsThereIsNoOrderToDeliver");
-        runNoOrderToDeliverCallbackInAnotherThread();
-      }
-    }
-  }
-
-  private void runNoOrderToDeliverCallbackInAnotherThread() {
-    assert noOrderToDeliverCallback != null;
     new Thread(
             () -> {
-              Log.info("noOrderToDeliverCallback started");
-              // The callback might set another callback inside it and we don't want to delete that
-              final BooleanSupplier callback = noOrderToDeliverCallback;
-              if (noOrderToDeliverCallback.getAsBoolean() && callback == noOrderToDeliverCallback) {
-                noOrderToDeliverCallback = null;
+              boolean success;
+              synchronized (noOrderToDeliverCallbackLock) {
+                do {
+                  while (isDeliveringOrder()) {
+                    try {
+                      noOrderToDeliverCallbackLock.wait();
+                    } catch (InterruptedException e) {
+                      e.printStackTrace();
+                    }
+                  }
+                  success = callback.getAsBoolean();
+                } while (!success);
               }
             })
         .start();
