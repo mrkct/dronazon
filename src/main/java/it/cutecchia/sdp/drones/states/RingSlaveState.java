@@ -1,10 +1,7 @@
 package it.cutecchia.sdp.drones.states;
 
 import it.cutecchia.sdp.admin.server.AdminServerClient;
-import it.cutecchia.sdp.common.CityPoint;
-import it.cutecchia.sdp.common.DataRaceTester;
-import it.cutecchia.sdp.common.DroneIdentifier;
-import it.cutecchia.sdp.common.Log;
+import it.cutecchia.sdp.common.*;
 import it.cutecchia.sdp.drones.Drone;
 import it.cutecchia.sdp.drones.DroneCommunicationClient;
 import it.cutecchia.sdp.drones.responses.DroneJoinResponse;
@@ -36,29 +33,29 @@ public class RingSlaveState implements DroneState {
     CityPoint startingPosition = drone.getLocalData().getPosition();
 
     Set<DroneIdentifier> drones = new TreeSet<>(store.getAllDroneIdentifiers());
-    drones.parallelStream()
-        .forEach(
-            (destination) -> {
-              if (destination.equals(drone.getIdentifier())) {
-                store.addDrone(destination);
-                return;
-              }
+    ThreadUtils.spawnThreadForEach(
+        drones,
+        (destination) -> {
+          if (destination.equals(drone.getIdentifier())) {
+            store.addDrone(destination);
+            return;
+          }
 
-              Optional<DroneJoinResponse> response =
-                  droneClient.notifyDroneJoin(destination, startingPosition);
-              if (!response.isPresent()) {
-                store.signalFailedCommunicationWithDrone(destination);
-                return;
-              }
+          Optional<DroneJoinResponse> response =
+              droneClient.notifyDroneJoin(destination, startingPosition);
+          if (!response.isPresent()) {
+            store.signalFailedCommunicationWithDrone(destination);
+            return;
+          }
 
-              Log.info(
-                  "notifyDroneJoin from #%d -> #%d success. %s",
-                  drone.getIdentifier().getId(), destination.getId(), response.get());
-              store.addDrone(destination);
-              if (response.get().isMaster()) {
-                store.setKnownMaster(destination);
-              }
-            });
+          Log.info(
+              "notifyDroneJoin from #%d -> #%d success. %s",
+              drone.getIdentifier().getId(), destination.getId(), response.get());
+          store.addDrone(destination);
+          if (response.get().isMaster()) {
+            store.setKnownMaster(destination);
+          }
+        });
   }
 
   @Override

@@ -56,20 +56,20 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
   @Override
   public void start() {
     Log.notice("Master is requesting data from every other drone");
-    store.getAllDroneIdentifiers().parallelStream()
-        .forEach(
-            (destination) -> {
-              Optional<DroneData> data = communicationClient.requestData(destination);
-              Log.info(
-                  "requestData from %s -> %s",
-                  destination,
-                  data.map(droneData -> "success, " + droneData.toString()).orElse("failed"));
-              if (data.isPresent()) {
-                store.handleDroneUpdateData(destination, data.get());
-              } else {
-                store.signalFailedCommunicationWithDrone(destination);
-              }
-            });
+    ThreadUtils.spawnThreadForEach(
+        store.getAllDroneIdentifiers(),
+        (destination) -> {
+          Optional<DroneData> data = communicationClient.requestData(destination);
+          Log.info(
+              "requestData from %s -> %s",
+              destination,
+              data.map(droneData -> "success, " + droneData.toString()).orElse("failed"));
+          if (data.isPresent()) {
+            store.handleDroneUpdateData(destination, data.get());
+          } else {
+            store.signalFailedCommunicationWithDrone(destination);
+          }
+        });
     statsTracker.start();
     /*
      * Cheap fix: If we started the orderSource before sending the requestData then what could
