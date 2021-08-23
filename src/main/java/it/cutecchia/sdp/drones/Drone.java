@@ -43,7 +43,7 @@ public class Drone implements DroneCommunicationServer {
         @Override
         public void run() {
           Log.userMessage(
-              "%d#: Total delivered orders: %d\tDistance travelled: %3f\tRemaining battery: %d%% Master? %s%",
+              "%d#: Total delivered orders: %d\tDistance travelled: %3f\tRemaining battery: %d%% Master? %s",
               identifier.getId(),
               totalDeliveredOrders,
               totalTravelledDistance,
