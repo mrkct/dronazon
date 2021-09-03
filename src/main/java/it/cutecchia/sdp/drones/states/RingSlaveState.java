@@ -4,6 +4,7 @@ import it.cutecchia.sdp.admin.server.AdminServerClient;
 import it.cutecchia.sdp.common.*;
 import it.cutecchia.sdp.drones.Drone;
 import it.cutecchia.sdp.drones.DroneCommunicationClient;
+import it.cutecchia.sdp.drones.ElectionManager;
 import it.cutecchia.sdp.drones.responses.DroneJoinResponse;
 import it.cutecchia.sdp.drones.store.DroneStore;
 import java.util.Optional;
@@ -15,17 +16,20 @@ public class RingSlaveState implements DroneState {
   private final DroneStore store;
   private final DroneCommunicationClient droneClient;
   private final AdminServerClient adminClient;
+  private final ElectionManager electionManager;
   private boolean shutdownInitiated = false;
 
   public RingSlaveState(
       Drone drone,
       DroneStore store,
       DroneCommunicationClient droneClient,
-      AdminServerClient adminClient) {
+      AdminServerClient adminClient,
+      ElectionManager electionManager) {
     this.drone = drone;
     this.store = store;
     this.droneClient = droneClient;
     this.adminClient = adminClient;
+    this.electionManager = electionManager;
   }
 
   @Override
@@ -75,7 +79,11 @@ public class RingSlaveState implements DroneState {
 
   private void forceShutdown() {
     Log.notice("Force Shutdown");
-    droneClient.shutdown();
+    synchronized (electionManager) {
+      electionManager.waitUntilNoElectionIsHappening();
+      droneClient.shutdown();
+    }
+
     adminClient.requestDroneExit(drone.getIdentifier());
     System.exit(0);
   }
@@ -85,7 +93,7 @@ public class RingSlaveState implements DroneState {
     if (drone.getLocalData().isLowBattery()) drone.shutdown();
 
     if (shutdownInitiated) {
-      DataRaceTester.sleep();
+      DataRaceTester.sleepForCollisions();
       forceShutdown();
     }
   }

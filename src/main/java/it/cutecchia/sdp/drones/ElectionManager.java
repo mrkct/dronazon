@@ -1,5 +1,6 @@
 package it.cutecchia.sdp.drones;
 
+import it.cutecchia.sdp.common.DataRaceTester;
 import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.Log;
 import it.cutecchia.sdp.drones.store.DroneStore;
@@ -11,6 +12,7 @@ public class ElectionManager {
   private final DroneStore store;
 
   private volatile boolean isParticipant = false;
+  private volatile boolean isElectionRunning = false;
 
   public ElectionManager(Drone drone, DroneStore store, DroneCommunicationClient client) {
     this.drone = drone;
@@ -18,9 +20,21 @@ public class ElectionManager {
     this.client = client;
   }
 
-  public void beginElection() {
+  public synchronized void waitUntilNoElectionIsHappening() {
+    while (isElectionRunning) {
+      try {
+        wait();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+  public synchronized void beginElection() {
     Log.notice("I am %d and I'm starting a new election", drone.getIdentifier().getId());
     isParticipant = true;
+    isElectionRunning = true;
+
     trySendingToNextDroneInRing(
         (nextDrone) -> {
           if (drone.getIdentifier().equals(nextDrone)) {
@@ -44,21 +58,32 @@ public class ElectionManager {
    *     if the drone was unreachable
    */
   private void trySendingToNextDroneInRing(Function<DroneIdentifier, Boolean> send) {
-    boolean succeeded;
-    do {
-      DroneIdentifier nextDrone = store.getNextDroneInElectionRing(drone.getIdentifier());
-      Log.info("trySendingToNextDroneInRing -> %s", nextDrone);
+    new Thread(
+            () -> {
+              boolean succeeded;
+              do {
+                DroneIdentifier nextDrone = store.getNextDroneInElectionRing(drone.getIdentifier());
+                Log.info("trySendingToNextDroneInRing -> %s", nextDrone);
 
-      succeeded = send.apply(nextDrone);
-      if (!succeeded) store.signalFailedCommunicationWithDrone(nextDrone);
-    } while (!succeeded);
+                succeeded = send.apply(nextDrone);
+                if (!succeeded) store.signalFailedCommunicationWithDrone(nextDrone);
+              } while (!succeeded);
+            })
+        .start();
   }
 
-  private void completeElection(DroneIdentifier newMaster) {
+  private synchronized void completeElection(DroneIdentifier newMaster) {
     isParticipant = false;
+    isElectionRunning = false;
     store.setKnownMaster(newMaster);
-    if (this.drone.getIdentifier().equals(newMaster)) drone.becomeMaster();
-    if (onNewMasterElectedListener != null) onNewMasterElectedListener.onNewMasterElected();
+    if (this.drone.getIdentifier().equals(newMaster)) {
+      drone.becomeMaster();
+    }
+
+    notifyAll();
+    if (onNewMasterElectedListener != null) {
+      onNewMasterElectedListener.onNewMasterElected();
+    }
   }
 
   private boolean compareCandidates(
@@ -67,8 +92,9 @@ public class ElectionManager {
         || (leftBattery == rightBattery && left.getId() < right.getId());
   }
 
-  public void onElectionMessage(
+  public synchronized void onElectionMessage(
       DroneIdentifier candidateMaster, int candidateMasterBatteryPercentage) {
+    isElectionRunning = true;
     Log.info(
         "Received ELECTION with <P=%d - battery=%d%%>  Myself P=%d - battery=%d%%",
         candidateMaster.getId(),
@@ -76,13 +102,14 @@ public class ElectionManager {
         drone.getIdentifier().getId(),
         drone.getLocalData().getBatteryPercentage());
 
+    DataRaceTester.sleep(3 * 1000);
+
     final DroneIdentifier thisDrone = drone.getIdentifier();
     if (thisDrone.equals(candidateMaster)) {
       Log.info("I'm becoming the master. Forwarding ELECTED");
       isParticipant = false;
       trySendingToNextDroneInRing(
           (nextDrone) -> client.forwardElectedMessage(nextDrone, thisDrone));
-      completeElection(thisDrone);
       return;
     }
 
@@ -108,22 +135,25 @@ public class ElectionManager {
     }
   }
 
-  public void onElectedMessage(DroneIdentifier newMaster) {
-    Log.notice("Received an ELECTED message: newMaster=%s", newMaster);
+  public synchronized void onElectedMessage(DroneIdentifier newMaster) {
+    Log.info("Received an ELECTED message: newMaster=%s", newMaster);
     final DroneIdentifier thisDrone = drone.getIdentifier();
-    if (thisDrone.equals(newMaster)) {
+
+    if (!thisDrone.equals(newMaster)) {
+      Log.info("Forwarding the ELECTED message to the next drone and completing the election");
+      trySendingToNextDroneInRing(
+          (nextDrone) -> {
+            if (thisDrone.equals(nextDrone)) return true;
+            return client.forwardElectedMessage(nextDrone, newMaster);
+          });
+    } else {
       Log.info("Stopped forwarding the ELECTED message");
-      return;
     }
 
-    Log.info("Forwarding the ELECTED message to the next drone and completing the election");
-
-    trySendingToNextDroneInRing(
-        (nextDrone) -> {
-          if (thisDrone.equals(nextDrone)) return true;
-          return client.forwardElectedMessage(nextDrone, newMaster);
-        });
-    completeElection(newMaster);
+    // Necessary because there might be multiple concurrent elections running
+    if (isElectionRunning) {
+      completeElection(newMaster);
+    }
   }
 
   public interface OnNewMasterElectedListener {

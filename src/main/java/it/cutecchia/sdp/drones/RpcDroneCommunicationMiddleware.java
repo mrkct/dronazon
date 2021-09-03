@@ -53,7 +53,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
 
   private DroneServiceGrpc.DroneServiceBlockingStub getBlockingStub(DroneIdentifier drone) {
     ManagedChannel channel = getManagedChannel(drone);
-    return DroneServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3, TimeUnit.SECONDS);
+    return DroneServiceGrpc.newBlockingStub(channel).withDeadlineAfter(30, TimeUnit.SECONDS);
   }
 
   private DroneServiceGrpc.DroneServiceBlockingStub getBlockingStubWithoutDeadline(
@@ -82,7 +82,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
             .setStartingPosition(startingPosition.toProto())
             .build();
     try {
-      DataRaceTester.sleep();
+      DataRaceTester.sleepForCollisions();
       DroneServiceOuterClass.DroneJoinResponse protoResponse =
           getBlockingStub(destination).notifyDroneJoin(message);
       return Optional.of(DroneJoinResponse.fromProto(protoResponse));
@@ -114,7 +114,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
           .fork()
           .call(
               () -> {
-                DataRaceTester.sleep();
+                DataRaceTester.sleepForCollisions();
                 return getBlockingStub(drone).assignOrder(message).getAccepted();
               });
     } catch (Exception e) {
@@ -139,7 +139,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     DroneServiceGrpc.DroneServiceBlockingStub stub = getBlockingStub(masterDrone);
 
     try {
-      DataRaceTester.sleep();
+      DataRaceTester.sleepForCollisions();
       stub.notifyCompletedDelivery(message.toProto());
       return true;
     } catch (StatusRuntimeException e) {
@@ -161,7 +161,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   @Override
   public Optional<DroneData> requestData(DroneIdentifier drone) {
     try {
-      DataRaceTester.sleep();
+      DataRaceTester.sleepForCollisions();
       return Optional.of(DroneData.fromProto(getBlockingStub(drone).requestData(empty())));
     } catch (StatusRuntimeException e) {
       Log.warn("Failed to request data from %s: %s", drone, e.getMessage());
@@ -189,9 +189,8 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
             .setCandidateLeader(candidateLeader.toProto())
             .setCandidateLeaderBatteryPercentage(candidateLeaderBatteryPercentage)
             .build();
-
     try {
-      DataRaceTester.sleep();
+      DataRaceTester.sleepForCollisions();
       getBlockingStub(destination).notifyElectionMessage(message);
       return true;
     } catch (StatusRuntimeException e) {
@@ -216,9 +215,8 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
         DroneServiceOuterClass.ElectedMessage.newBuilder()
             .setNewLeader(newLeader.toProto())
             .build();
-
     try {
-      DataRaceTester.sleep();
+      DataRaceTester.sleepForCollisions();
       getBlockingStub(destination).notifyElectedMessage(message);
       return true;
     } catch (StatusRuntimeException e) {
@@ -301,7 +299,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   public void notifyDroneJoin(
       DroneServiceOuterClass.DroneJoinMessage request,
       StreamObserver<DroneServiceOuterClass.DroneJoinResponse> responseObserver) {
-    DataRaceTester.sleep();
+    DataRaceTester.sleepForCollisions();
 
     DroneIdentifier sender = DroneIdentifier.fromProto(request.getSender());
     CityPoint startingPosition = CityPoint.fromProto(request.getStartingPosition());
@@ -317,7 +315,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   public void assignOrder(
       DroneServiceOuterClass.AssignOrderMessage request,
       StreamObserver<DroneServiceOuterClass.AssignOrderResponse> responseObserver) {
-    DataRaceTester.sleep();
+    DataRaceTester.sleepForCollisions();
     Order order = Order.fromProto(request.getOrder());
 
     boolean acceptOrder = droneServer.onOrderAssigned(order);
@@ -332,11 +330,11 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   public void notifyCompletedDelivery(
       DroneServiceOuterClass.CompletedDeliveryMessage request,
       StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
-    DataRaceTester.sleep();
+    DataRaceTester.sleepForCollisions();
     responseObserver.onNext(empty());
     responseObserver.onCompleted();
 
-    DataRaceTester.sleep();
+    DataRaceTester.sleepForCollisions();
     droneServer.onCompletedDeliveryNotification(CompletedDeliveryMessage.fromProto(request));
   }
 
@@ -344,7 +342,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   public void requestData(
       DroneServiceOuterClass.Empty request,
       StreamObserver<DroneServiceOuterClass.DroneDataPacket> responseObserver) {
-    DataRaceTester.sleep();
+    DataRaceTester.sleepForCollisions();
     DroneData data = droneServer.onDataRequest();
     responseObserver.onNext(data.toProto());
     responseObserver.onCompleted();
@@ -354,36 +352,35 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   public void notifyElectionMessage(
       DroneServiceOuterClass.ElectionMessage request,
       StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
-    DataRaceTester.sleep();
-    responseObserver.onNext(empty());
-    responseObserver.onCompleted();
-
     Context.current()
         .fork()
         .run(
             () -> {
-              DataRaceTester.sleep();
+              DataRaceTester.sleepForCollisions();
               droneServer.onElectionMessage(
                   DroneIdentifier.fromProto(request.getCandidateLeader()),
                   request.getCandidateLeaderBatteryPercentage());
             });
+
+    responseObserver.onNext(empty());
+    responseObserver.onCompleted();
   }
 
   @Override
   public void notifyElectedMessage(
       DroneServiceOuterClass.ElectedMessage request,
       StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
-    DataRaceTester.sleep();
-    responseObserver.onNext(empty());
-    responseObserver.onCompleted();
 
     Context.current()
         .fork()
         .run(
             () -> {
-              DataRaceTester.sleep();
+              DataRaceTester.sleepForCollisions();
               droneServer.onElectedMessage(DroneIdentifier.fromProto(request.getNewLeader()));
             });
+
+    responseObserver.onNext(empty());
+    responseObserver.onCompleted();
   }
 
   @Override
@@ -415,7 +412,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     responseObserver.onNext(empty());
     responseObserver.onCompleted();
 
-    DataRaceTester.sleep();
+    DataRaceTester.sleepForCollisions();
     droneServer.onStatusUpdate(
         DroneIdentifier.fromProto(request.getSender()), DroneData.fromProto(request.getData()));
   }

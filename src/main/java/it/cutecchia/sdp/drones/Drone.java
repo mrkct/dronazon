@@ -143,12 +143,12 @@ public class Drone implements DroneCommunicationServer {
                   localData = localData.refuseOrders();
                 }
               }
-              DataRaceTester.sleep();
+              DataRaceTester.sleepForCollisions();
               Log.debug("Took the lock!");
 
               chargingStatus = ChargingStatus.SLEEPING;
 
-              DataRaceTester.sleep();
+              DataRaceTester.sleepForCollisions();
 
               Log.userMessage("I will recharge as soon as I complete my order");
               doWhenThereIsNoOrderToDeliver(
@@ -170,7 +170,7 @@ public class Drone implements DroneCommunicationServer {
                       chargingAreaLock.release();
                       chargingStatus = ChargingStatus.FINALIZING;
                       Log.userMessage("%d: I have finished recharging", System.currentTimeMillis());
-                      DataRaceTester.sleep();
+                      DataRaceTester.sleepForCollisions();
 
                       // FIXME: Arriva una assign order appena dopo questa istruzione. Rispondiamo
                       // immediatamente
@@ -220,18 +220,21 @@ public class Drone implements DroneCommunicationServer {
 
     if (allDrones.size() == 1) {
       store.setKnownMaster(identifier);
-      changeStateTo(new RingMasterState(this, store, middleware, adminServerClient, orderSource));
+      changeStateTo(
+          new RingMasterState(
+              this, store, middleware, adminServerClient, orderSource, electionManager));
     } else {
-      changeStateTo(new RingSlaveState(this, store, middleware, adminServerClient));
+      changeStateTo(
+          new RingSlaveState(this, store, middleware, adminServerClient, electionManager));
     }
     masterHeartbeatTimer.scheduleAtFixedRate(masterHeartbeat, 0, MASTER_HEARTBEAT_PERIOD);
-    printStatsTimer.scheduleAtFixedRate(printStatsTask, 0, PRINT_STATS_PERIOD);
+    // printStatsTimer.scheduleAtFixedRate(printStatsTask, 0, PRINT_STATS_PERIOD);
   }
 
   @Override
   public DroneJoinResponse onDroneJoin(DroneIdentifier identifier, CityPoint startingPosition) {
     store.addDrone(identifier);
-    DataRaceTester.sleep();
+    DataRaceTester.sleepForCollisions();
     store.handleDroneUpdateData(identifier, new DroneData(startingPosition));
     Log.notice("A new drone (#%d) joined the ring at %s", identifier.getId(), startingPosition);
     currentState.onNewDroneJoin(identifier);
@@ -264,7 +267,13 @@ public class Drone implements DroneCommunicationServer {
             electionManager.beginElection();
           }
         });
-    electionManager.beginElection();
+    synchronized (electionManager) {
+      // Check if we're currently in the middle of an election. If we're not then we start a new one
+      electionManager.waitUntilNoElectionIsHappening();
+      if (store.getKnownMaster() == knownMaster) {
+        electionManager.beginElection();
+      }
+    }
   }
 
   @Override
@@ -320,10 +329,7 @@ public class Drone implements DroneCommunicationServer {
               }
 
               deliverToMaster(
-                  (master) -> {
-                    Log.debug("deliverToMaster because of order completion");
-                    return middleware.notifyCompletedDelivery(master, message);
-                  },
+                  (master) -> middleware.notifyCompletedDelivery(master, message),
                   () -> {
                     synchronized (noOrderToDeliverCallbackLock) {
                       noOrderToDeliverCallbackLock.notifyAll();
@@ -379,7 +385,9 @@ public class Drone implements DroneCommunicationServer {
 
   public void becomeMaster() {
     Log.notice("Becoming master");
-    changeStateTo(new RingMasterState(this, store, middleware, adminServerClient, orderSource));
+    changeStateTo(
+        new RingMasterState(
+            this, store, middleware, adminServerClient, orderSource, electionManager));
   }
 
   private final Object noOrderToDeliverCallbackLock = new Object();

@@ -15,13 +15,15 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
   private final OrderAssigner orderAssigner;
   private final FleetStatsTracker statsTracker;
   private final AdminServerClient adminServerClient;
+  private final ElectionManager electionManager;
 
   public RingMasterState(
       Drone drone,
       DroneStore store,
       DroneCommunicationClient communicationClient,
       AdminServerClient client,
-      OrderSource orderSource) {
+      OrderSource orderSource,
+      ElectionManager electionManager) {
     this.drone = drone;
     this.communicationClient = communicationClient;
     this.store = store;
@@ -29,6 +31,7 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
     this.orderAssigner = new OrderAssigner(store, communicationClient);
     this.statsTracker = new FleetStatsTracker(store, client);
     this.adminServerClient = client;
+    this.electionManager = electionManager;
   }
 
   @Override
@@ -114,7 +117,12 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
                           return false;
                         }
                         Log.notice("Final shutdown phase - Closing all. Goodbye :)");
-                        communicationClient.shutdown();
+
+                        synchronized (electionManager) {
+                          electionManager.waitUntilNoElectionIsHappening();
+                          communicationClient.shutdown();
+                        }
+
                         statsTracker.sendStatsAndShutdown();
                         adminServerClient.requestDroneExit(drone.getIdentifier());
                         System.exit(0);
