@@ -22,5 +22,5 @@ public interface DroneCommunicationServer {
 
   void onLockRequest(int logicalClock, DroneIdentifier requester);
 
-  void onStatusUpdate(DroneIdentifier sender, DroneData updatedData);
+  void onCompletedChargeMessage(DroneIdentifier sender);
 }

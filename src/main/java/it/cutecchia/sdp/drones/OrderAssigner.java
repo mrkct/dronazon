@@ -111,7 +111,6 @@ public class OrderAssigner {
       Order order = pendingOrders.remove(0);
       DroneIdentifier drone = findBestDroneForOrder(drones, order);
       drones.remove(drone);
-      dronesStore.signalDroneWasAssignedOrder(drone, order);
       assignedOrders.put(drone, order);
     }
 
@@ -137,7 +136,13 @@ public class OrderAssigner {
                 "Failed to assign order %d to drone #%d. Re-adding order to queue...",
                 order.getId(), drone.getId());
           } finally {
-            if (!successfullyAssigned) {
+            // FIXME: Un ordine non è assegnato, chiamiamo questo ed entriamo di nuovo qui dentro
+            // prima di aver terminato
+            // Potremmo avere problemi?
+
+            if (successfullyAssigned) {
+              dronesStore.signalDroneWasAssignedOrder(drone, order);
+            } else {
               Log.info("Failed to assign order %d, re-adding to queue...", order.getId());
               enqueueOrder(order);
             }

@@ -1,6 +1,5 @@
 package it.cutecchia.sdp.drones.states;
 
-import it.cutecchia.sdp.common.DroneData;
 import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.Log;
 import it.cutecchia.sdp.drones.messages.CompletedDeliveryMessage;
@@ -16,8 +15,8 @@ public interface DroneState {
     Log.warn("Only the master should be notified of completed deliveries");
   }
 
-  default void onDroneStatusUpdate(DroneIdentifier drone, DroneData updatedData) {
-    Log.warn("Only the master should receive STATUS_UPDATES");
+  default void onCompletedChargeMessage(DroneIdentifier drone) {
+    Log.warn("Only the master should receive COMPLETED_CHARGE");
   }
 
   void afterCompletingAnOrder();

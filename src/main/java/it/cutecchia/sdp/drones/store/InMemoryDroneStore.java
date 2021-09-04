@@ -1,13 +1,12 @@
 package it.cutecchia.sdp.drones.store;
 
-import it.cutecchia.sdp.common.DroneData;
-import it.cutecchia.sdp.common.DroneIdentifier;
-import it.cutecchia.sdp.common.Log;
-import it.cutecchia.sdp.common.Order;
+import it.cutecchia.sdp.common.*;
 import java.util.*;
 import javax.annotation.Nonnull;
 
 public class InMemoryDroneStore implements DroneStore {
+  // FIXME: Forse dovrebbero essere syncronized tanti di questi metodi perchè non vogliamo update
+  // sotto al naso
   private final Map<DroneIdentifier, DroneData> drones = new HashMap<>();
   private DroneIdentifier knownMaster = null;
 
@@ -88,6 +87,17 @@ public class InMemoryDroneStore implements DroneStore {
     assert getDroneData(drone).get().canAcceptOrders();
 
     handleDroneUpdateData(drone, getDroneData(drone).get().refuseOrders());
+  }
+
+  @Override
+  public void signalDroneCompletedCharging(DroneIdentifier drone) {
+    DroneData data =
+        new DroneData(
+            new CityPoint(0, 0),
+            100,
+            getDroneData(drone).map(DroneData::getAssignedOrder).orElse(null),
+            true);
+    drones.put(drone, data);
   }
 
   @Override

@@ -135,9 +135,9 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
   }
 
   @Override
-  public void onDroneStatusUpdate(DroneIdentifier sender, DroneData updatedData) {
-    Log.debug("Received STATUS_UPDATE from %s with %s", sender, updatedData);
-    store.handleDroneUpdateData(sender, updatedData);
+  public void onCompletedChargeMessage(DroneIdentifier sender) {
+    Log.debug("Received COMPLETED_CHARGE from %s", sender);
+    store.signalDroneCompletedCharging(sender);
     orderAssigner.notifyDroneFinishedRecharging();
   }
 

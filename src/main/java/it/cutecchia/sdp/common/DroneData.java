@@ -95,7 +95,7 @@ public class DroneData {
   }
 
   public DroneData refuseOrders() {
-    return new DroneData(position, batteryPercentage, assignedOrder, true);
+    return new DroneData(position, batteryPercentage, assignedOrder, false);
   }
 
   @Override

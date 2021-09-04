@@ -248,21 +248,16 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   }
 
   @Override
-  public boolean notifyStatusUpdate(
-      DroneIdentifier destination, DroneIdentifier sender, DroneData data) {
+  public boolean notifyCompletedCharging(DroneIdentifier destination, DroneIdentifier sender) {
     try {
-      Log.info("Sending STATUS_UPDATE to %d", destination.getId());
-      DroneServiceOuterClass.StatusUpdateMessage message =
-          DroneServiceOuterClass.StatusUpdateMessage.newBuilder()
-              .setSender(sender.toProto())
-              .setData(data.toProto())
-              .build();
-      getBlockingStub(destination).notifyStatusUpdate(message);
+      Log.info("Sending COMPLETED_CHARGING to %d", destination.getId());
+
+      getBlockingStub(destination).notifyCompletedCharging(sender.toProto());
       return true;
     } catch (StatusRuntimeException e) {
       Log.warn(
-          "Failed to send STATUS_UPDATE (%s) to %d due to: %s",
-          data, destination.getId(), e.getMessage());
+          "Failed to send COMPLETED_CHARGING to %d due to: %s",
+          destination.getId(), e.getMessage());
       return false;
     }
   }
@@ -406,15 +401,14 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   }
 
   @Override
-  public void notifyStatusUpdate(
-      DroneServiceOuterClass.StatusUpdateMessage request,
+  public void notifyCompletedCharging(
+      DroneServiceOuterClass.DroneIdentifierPacket request,
       StreamObserver<DroneServiceOuterClass.Empty> responseObserver) {
     responseObserver.onNext(empty());
     responseObserver.onCompleted();
 
     DataRaceTester.sleepForCollisions();
-    droneServer.onStatusUpdate(
-        DroneIdentifier.fromProto(request.getSender()), DroneData.fromProto(request.getData()));
+    droneServer.onCompletedChargeMessage(DroneIdentifier.fromProto(request));
   }
 
   private DroneServiceOuterClass.Empty empty() {

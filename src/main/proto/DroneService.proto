@@ -77,11 +77,6 @@ message LockRequestMessage {
   DroneIdentifierPacket requester = 2;
 }
 
-message StatusUpdateMessage {
-  DroneIdentifierPacket sender = 1;
-  DroneDataPacket data = 2;
-}
-
 service DroneService {
   // Used by all drones
   rpc NotifyDroneJoin(DroneJoinMessage) returns (DroneJoinResponse);
@@ -94,5 +89,5 @@ service DroneService {
 
   // Used only on the master
   rpc NotifyCompletedDelivery(CompletedDeliveryMessage) returns (Empty);
-  rpc NotifyStatusUpdate(StatusUpdateMessage) returns (Empty);
+  rpc NotifyCompletedCharging(DroneIdentifierPacket) returns (Empty);
 }

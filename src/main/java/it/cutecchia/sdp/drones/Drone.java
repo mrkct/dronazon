@@ -172,12 +172,6 @@ public class Drone implements DroneCommunicationServer {
                       Log.userMessage("%d: I have finished recharging", System.currentTimeMillis());
                       DataRaceTester.sleepForCollisions();
 
-                      // FIXME: Arriva una assign order appena dopo questa istruzione. Rispondiamo
-                      // immediatamente
-                      // accettando, il master si segna che abbiamo l'order. Poi riceve lo
-                      // STATUS_UPDATE e si segna
-                      // che siamo a (0,0) con 100% batteria e cancella l'ordine...
-
                       // Invece di statusUpdate potrebbe essere un semplice doneRecharging
                       synchronized (this) {
                         synchronized (localDataLock) {
@@ -188,8 +182,7 @@ public class Drone implements DroneCommunicationServer {
                       deliverToMaster(
                           (master) -> {
                             Log.debug("Deliver to master because of status update (lock release)");
-                            return middleware.notifyStatusUpdate(
-                                master, identifier, getLocalData());
+                            return middleware.notifyCompletedCharging(master, identifier);
                           },
                           () -> {
                             Log.debug("Notified that I'm done recharging to master");
@@ -379,8 +372,8 @@ public class Drone implements DroneCommunicationServer {
   }
 
   @Override
-  public void onStatusUpdate(DroneIdentifier sender, DroneData updatedData) {
-    currentState.onDroneStatusUpdate(sender, updatedData);
+  public void onCompletedChargeMessage(DroneIdentifier sender) {
+    currentState.onCompletedChargeMessage(sender);
   }
 
   public void becomeMaster() {

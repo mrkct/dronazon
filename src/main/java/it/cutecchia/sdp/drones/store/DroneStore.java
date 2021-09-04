@@ -27,6 +27,8 @@ public interface DroneStore {
 
   void signalDroneIsRecharging(DroneIdentifier drone);
 
+  void signalDroneCompletedCharging(DroneIdentifier drone);
+
   void setKnownMaster(DroneIdentifier drone);
 
   DroneIdentifier getKnownMaster();

@@ -29,7 +29,7 @@ public interface DroneCommunicationClient {
 
   boolean forwardElectedMessage(DroneIdentifier destination, DroneIdentifier newLeader);
 
-  boolean notifyStatusUpdate(DroneIdentifier destination, DroneIdentifier sender, DroneData data);
+  boolean notifyCompletedCharging(DroneIdentifier destination, DroneIdentifier sender);
 
   void shutdown();
 
