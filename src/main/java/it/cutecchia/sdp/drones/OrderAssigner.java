@@ -87,9 +87,7 @@ public class OrderAssigner {
   }
 
   private Set<DroneIdentifier> getAvailableDronesForDeliveries() {
-    return dronesStore
-        .getAllDroneIdentifiers()
-        .parallelStream()
+    return dronesStore.getAllDroneIdentifiers().parallelStream()
         .filter(
             id -> {
               Optional<DroneData> data = dronesStore.getDroneData(id);

@@ -1,14 +1,33 @@
 package it.cutecchia.sdp.drones;
 
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.*;
 
 import it.cutecchia.sdp.common.CityPoint;
 import it.cutecchia.sdp.common.DroneData;
 import it.cutecchia.sdp.common.DroneIdentifier;
+import it.cutecchia.sdp.common.ThreadUtils;
 import it.cutecchia.sdp.drones.store.DroneStore;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class ElectionManagerTest {
+  @BeforeEach
+  public void clearSpawnedThreadsList() {
+    ThreadUtils.clearSpawnedThreadsList();
+  }
+
+  private static void waitForAllThreadsToBeDone() {
+    for (Thread t : ThreadUtils.getAllSpawnedThreads()) {
+      try {
+        t.join();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        fail();
+      }
+    }
+  }
+
   @Test
   public void beginElectionSendsMessageToTheNextDrone() {
     final DroneIdentifier thisDrone = new DroneIdentifier(1, "0.0.0.0", 0);
@@ -27,6 +46,8 @@ public class ElectionManagerTest {
 
     ElectionManager electionManager = new ElectionManager(drone, store, client);
     electionManager.beginElection();
+
+    waitForAllThreadsToBeDone();
 
     verify(client).forwardElectionMessage(nextDroneInRing, thisDrone, thisDroneBattery);
   }
@@ -48,6 +69,8 @@ public class ElectionManagerTest {
 
     ElectionManager electionManager = new ElectionManager(drone, store, client);
     electionManager.beginElection();
+
+    waitForAllThreadsToBeDone();
 
     verifyNoInteractions(client);
     verify(store).setKnownMaster(eq(thisDrone));
@@ -74,6 +97,8 @@ public class ElectionManagerTest {
     ElectionManager electionManager = new ElectionManager(drone, store, client);
     electionManager.onElectionMessage(candidate, candidateBattery);
 
+    waitForAllThreadsToBeDone();
+
     verify(client).forwardElectionMessage(any(), eq(candidate), eq(candidateBattery));
   }
 
@@ -96,6 +121,8 @@ public class ElectionManagerTest {
 
     ElectionManager electionManager = new ElectionManager(drone, store, client);
     electionManager.onElectionMessage(candidate, candidateBattery);
+
+    waitForAllThreadsToBeDone();
 
     verify(client).forwardElectionMessage(any(), eq(thisDrone), eq(thisDroneBattery));
   }
@@ -122,6 +149,8 @@ public class ElectionManagerTest {
     ElectionManager electionManager = new ElectionManager(drone, store, client);
     electionManager.onElectionMessage(forwardedCandidate, forwardedCandidateBattery);
     electionManager.onElectionMessage(blockedCandidate, blockedCandidateBattery);
+
+    waitForAllThreadsToBeDone();
 
     verify(client, times(1))
         .forwardElectionMessage(any(), eq(forwardedCandidate), eq(forwardedCandidateBattery));
@@ -150,6 +179,8 @@ public class ElectionManagerTest {
     electionManager.onElectionMessage(firstCandidate, firstCandidateBattery);
     electionManager.onElectionMessage(secondCandidate, secondCandidateBattery);
 
+    waitForAllThreadsToBeDone();
+
     verify(client, times(2)).forwardElectionMessage(any(), any(), anyInt());
     verify(client, atLeastOnce())
         .forwardElectionMessage(any(), eq(firstCandidate), eq(firstCandidateBattery));
@@ -176,9 +207,9 @@ public class ElectionManagerTest {
     ElectionManager electionManager = new ElectionManager(drone, store, client);
     electionManager.onElectionMessage(thisDrone, thisDroneBattery);
 
+    waitForAllThreadsToBeDone();
+
     verify(client).forwardElectedMessage(eq(anotherDrone), eq(thisDrone));
-    verify(store).setKnownMaster(eq(thisDrone));
-    verify(drone).becomeMaster();
   }
 
   @Test
@@ -201,6 +232,8 @@ public class ElectionManagerTest {
     ElectionManager electionManager = new ElectionManager(drone, store, client);
     electionManager.onElectedMessage(newMaster);
 
+    waitForAllThreadsToBeDone();
+
     verify(client).forwardElectedMessage(eq(nextDroneInRing), eq(newMaster));
     verify(store).setKnownMaster(eq(newMaster));
     verify(drone, never()).becomeMaster();
@@ -218,6 +251,8 @@ public class ElectionManagerTest {
 
     ElectionManager electionManager = new ElectionManager(drone, store, client);
     electionManager.onElectedMessage(thisDrone);
+
+    waitForAllThreadsToBeDone();
 
     verifyNoInteractions(client);
   }
