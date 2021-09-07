@@ -22,14 +22,13 @@ public class OrderAssigner {
   }
 
   private void attemptAssigningOrders() {
-    new Thread(
-            () -> {
-              assignAllPossibleOrders();
-              if (noPendingOrdersCallback != null && !areTherePendingOrders()) {
-                noPendingOrdersCallback.run();
-              }
-            })
-        .start();
+    ThreadUtils.runInAnotherThread(
+        () -> {
+          assignAllPossibleOrders();
+          if (noPendingOrdersCallback != null && !areTherePendingOrders()) {
+            noPendingOrdersCallback.run();
+          }
+        });
   }
 
   public void enqueueOrder(Order order) {
@@ -88,7 +87,9 @@ public class OrderAssigner {
   }
 
   private Set<DroneIdentifier> getAvailableDronesForDeliveries() {
-    return dronesStore.getAllDroneIdentifiers().parallelStream()
+    return dronesStore
+        .getAllDroneIdentifiers()
+        .parallelStream()
         .filter(
             id -> {
               Optional<DroneData> data = dronesStore.getDroneData(id);
@@ -136,10 +137,6 @@ public class OrderAssigner {
                 "Failed to assign order %d to drone #%d. Re-adding order to queue...",
                 order.getId(), drone.getId());
           } finally {
-            // FIXME: Un ordine non è assegnato, chiamiamo questo ed entriamo di nuovo qui dentro
-            // prima di aver terminato
-            // Potremmo avere problemi?
-
             if (successfullyAssigned) {
               dronesStore.signalDroneWasAssignedOrder(drone, order);
             } else {

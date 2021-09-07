@@ -3,7 +3,10 @@ package it.cutecchia.sdp.drones;
 import it.cutecchia.sdp.common.DataRaceTester;
 import it.cutecchia.sdp.common.DroneIdentifier;
 import it.cutecchia.sdp.common.Log;
+import it.cutecchia.sdp.common.ThreadUtils;
 import it.cutecchia.sdp.drones.store.DroneStore;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 public class ElectionManager {
@@ -13,6 +16,7 @@ public class ElectionManager {
 
   private volatile boolean isParticipant = false;
   private volatile boolean isElectionRunning = false;
+  private volatile int electedMessagesToStop = 0;
 
   public ElectionManager(Drone drone, DroneStore store, DroneCommunicationClient client) {
     this.drone = drone;
@@ -28,6 +32,7 @@ public class ElectionManager {
         e.printStackTrace();
       }
     }
+    assert electedMessagesToStop == 0;
   }
 
   public synchronized void beginElection() {
@@ -35,10 +40,21 @@ public class ElectionManager {
     isParticipant = true;
     isElectionRunning = true;
 
+    assert !drone.isMaster();
+
     trySendingToNextDroneInRing(
         (nextDrone) -> {
-          if (drone.getIdentifier().equals(nextDrone)) {
-            completeElection(nextDrone);
+          final DroneIdentifier thisDrone = drone.getIdentifier();
+          if (thisDrone.equals(nextDrone)) {
+            Log.info("Skipping the election because I'm the only drone in the system");
+            isElectionRunning = false;
+            isParticipant = false;
+            store.setKnownMaster(thisDrone);
+            drone.becomeMaster();
+            synchronized (this) {
+              notifyAll();
+            }
+            callOnNewMasterElectedListeners();
             return true;
           }
           return client.forwardElectionMessage(
@@ -58,32 +74,17 @@ public class ElectionManager {
    *     if the drone was unreachable
    */
   private void trySendingToNextDroneInRing(Function<DroneIdentifier, Boolean> send) {
-    new Thread(
-            () -> {
-              boolean succeeded;
-              do {
-                DroneIdentifier nextDrone = store.getNextDroneInElectionRing(drone.getIdentifier());
-                Log.info("trySendingToNextDroneInRing -> %s", nextDrone);
+    ThreadUtils.runInAnotherThread(
+        () -> {
+          boolean succeeded;
+          do {
+            DroneIdentifier nextDrone = store.getNextDroneInElectionRing(drone.getIdentifier());
+            Log.info("trySendingToNextDroneInRing -> %s", nextDrone);
 
-                succeeded = send.apply(nextDrone);
-                if (!succeeded) store.signalFailedCommunicationWithDrone(nextDrone);
-              } while (!succeeded);
-            })
-        .start();
-  }
-
-  private synchronized void completeElection(DroneIdentifier newMaster) {
-    isParticipant = false;
-    isElectionRunning = false;
-    store.setKnownMaster(newMaster);
-    if (this.drone.getIdentifier().equals(newMaster)) {
-      drone.becomeMaster();
-    }
-
-    notifyAll();
-    if (onNewMasterElectedListener != null) {
-      onNewMasterElectedListener.onNewMasterElected();
-    }
+            succeeded = send.apply(nextDrone);
+            if (!succeeded) store.signalFailedCommunicationWithDrone(nextDrone);
+          } while (!succeeded);
+        });
   }
 
   private boolean compareCandidates(
@@ -94,7 +95,21 @@ public class ElectionManager {
 
   public synchronized void onElectionMessage(
       DroneIdentifier candidateMaster, int candidateMasterBatteryPercentage) {
+    final DroneIdentifier thisDrone = drone.getIdentifier();
     isElectionRunning = true;
+
+    // Edge case: A newly entered drone starts an election while another is running
+    // and the new master is waiting to receive back its own ELECTION message
+    // It will probably receive the original ELECTED message, but there is an case where it missed
+    // it so we send another
+    if (drone.isMaster()) {
+      Log.warn("Received a ELECTION message when I am already master!");
+      electedMessagesToStop++;
+      trySendingToNextDroneInRing(
+          (nextDrone) -> client.forwardElectedMessage(nextDrone, thisDrone));
+      return;
+    }
+
     Log.info(
         "Received ELECTION with <P=%d - battery=%d%%>  Myself P=%d - battery=%d%%",
         candidateMaster.getId(),
@@ -104,10 +119,13 @@ public class ElectionManager {
 
     DataRaceTester.sleep(3 * 1000);
 
-    final DroneIdentifier thisDrone = drone.getIdentifier();
     if (thisDrone.equals(candidateMaster)) {
       Log.info("I'm becoming the master. Forwarding ELECTED");
       isParticipant = false;
+      store.setKnownMaster(thisDrone);
+      drone.becomeMaster();
+
+      electedMessagesToStop++;
       trySendingToNextDroneInRing(
           (nextDrone) -> client.forwardElectedMessage(nextDrone, thisDrone));
       return;
@@ -139,34 +157,67 @@ public class ElectionManager {
     Log.info("Received an ELECTED message: newMaster=%s", newMaster);
     final DroneIdentifier thisDrone = drone.getIdentifier();
 
-    if (!thisDrone.equals(newMaster)) {
-      Log.info("Forwarding the ELECTED message to the next drone and completing the election");
-      trySendingToNextDroneInRing(
-          (nextDrone) -> {
-            if (thisDrone.equals(nextDrone)) return true;
-            return client.forwardElectedMessage(nextDrone, newMaster);
-          });
-    } else {
-      Log.info("Stopped forwarding the ELECTED message");
+    if (thisDrone.equals(newMaster)) {
+      Log.info("Stopped forwarding an ELECTED message");
+      electedMessagesToStop--;
+      if (electedMessagesToStop == 0) {
+        isElectionRunning = false;
+        notifyAll();
+        callOnNewMasterElectedListeners();
+      }
+      return;
     }
 
-    // Necessary because there might be multiple concurrent elections running
-    if (isElectionRunning) {
-      completeElection(newMaster);
+    Log.info("Forwarding the ELECTED message to the next drone and completing the election");
+    trySendingToNextDroneInRing(
+        (nextDrone) -> {
+          if (thisDrone.equals(nextDrone)) return true;
+          return client.forwardElectedMessage(nextDrone, newMaster);
+        });
+
+    // Edge case: a drone enters in the midst of an election and tries to start a new once
+    // It sends a ELECTION message, the new master puts itself and everyone receives
+    // another ELECTED message
+    if (newMaster.equals(store.getKnownMaster())) {
+      return;
     }
+
+    isParticipant = false;
+    isElectionRunning = false;
+    store.setKnownMaster(newMaster);
+    notifyAll();
+    callOnNewMasterElectedListeners();
   }
 
   public interface OnNewMasterElectedListener {
-    void onNewMasterElected();
+    void onNewMasterElected(OnNewMasterElectedListener thisListener);
   }
 
-  private OnNewMasterElectedListener onNewMasterElectedListener;
+  private final List<OnNewMasterElectedListener> onNewMasterElectedListeners = new ArrayList<>();
 
-  public void setOnNewMasterElectedListener(OnNewMasterElectedListener listener) {
-    onNewMasterElectedListener = listener;
+  public void addOnNewMasterElectedListener(OnNewMasterElectedListener listener) {
+    synchronized (onNewMasterElectedListeners) {
+      onNewMasterElectedListeners.add(listener);
+    }
   }
 
-  public void clearOnNewMasterElectedListener() {
-    onNewMasterElectedListener = null;
+  public void clearOnNewMasterElectedListener(OnNewMasterElectedListener listener) {
+    synchronized (onNewMasterElectedListeners) {
+      onNewMasterElectedListeners.remove(listener);
+    }
+  }
+
+  private void callOnNewMasterElectedListeners() {
+    List<OnNewMasterElectedListener> listeners;
+    synchronized (onNewMasterElectedListeners) {
+      listeners = new ArrayList<>(onNewMasterElectedListeners);
+    }
+
+    Log.info(
+        "Calling onNewMasterElectedListeners: %d listeners currently",
+        onNewMasterElectedListeners.size());
+    for (OnNewMasterElectedListener listener : listeners) {
+      listener.onNewMasterElected(listener);
+    }
   }
 }

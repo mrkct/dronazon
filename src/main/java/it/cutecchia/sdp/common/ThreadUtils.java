@@ -21,4 +21,20 @@ public class ThreadUtils {
       }
     }
   }
+
+  private static List<Thread> allSpawnedThreads = new ArrayList<>();
+
+  public static void runInAnotherThread(Runnable runnable) {
+    Thread t = new Thread(runnable);
+    allSpawnedThreads.add(t);
+    t.start();
+  }
+
+  public static void clearSpawnedThreadsList() {
+    allSpawnedThreads.clear();
+  }
+
+  public static List<Thread> getAllSpawnedThreads() {
+    return allSpawnedThreads;
+  }
 }

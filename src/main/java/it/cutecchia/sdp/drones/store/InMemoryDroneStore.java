@@ -36,7 +36,8 @@ public class InMemoryDroneStore implements DroneStore {
     }
 
     Optional<DroneIdentifier> firstNextIdentifier =
-        drones.parallelStream()
+        drones
+            .parallelStream()
             .filter(id -> id.getId() > identifier.getId())
             .min(DroneIdentifier::compareTo);
     if (firstNextIdentifier.isPresent()) {

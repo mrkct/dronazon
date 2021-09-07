@@ -66,7 +66,7 @@ public class Drone implements DroneCommunicationServer {
       new TimerTask() {
         @Override
         public void run() {
-          Log.notice("Deliver to master because of heartbeat");
+          Log.debug("deliverToMaster for HEARTBEAT");
           deliverToMaster(middleware::requestHeartbeat, () -> {});
         }
       };
@@ -92,6 +92,10 @@ public class Drone implements DroneCommunicationServer {
 
   public boolean isDeliveringOrder() {
     return localData.getAssignedOrder() != null;
+  }
+
+  public boolean isMaster() {
+    return currentState.isMaster();
   }
 
   public void start() throws IOException {
@@ -133,66 +137,66 @@ public class Drone implements DroneCommunicationServer {
 
     chargingStatus = ChargingStatus.WAITING_TO_RECHARGE;
     assert !chargingAreaLock.isOwned();
-    new Thread(
-            () -> {
-              Log.userMessage("Waiting to get permission to recharge from all other drones...");
-              chargingAreaLock.take();
+    ThreadUtils.runInAnotherThread(
+        () -> {
+          Log.userMessage("Waiting to get permission to recharge from all other drones...");
+          chargingAreaLock.take();
 
-              synchronized (this) {
-                synchronized (localDataLock) {
-                  localData = localData.refuseOrders();
-                }
-              }
-              DataRaceTester.sleepForCollisions();
-              Log.debug("Took the lock!");
+          synchronized (this) {
+            synchronized (localDataLock) {
+              localData = localData.refuseOrders();
+            }
+          }
+          DataRaceTester.sleepForCollisions();
+          Log.debug("Took the lock!");
 
-              chargingStatus = ChargingStatus.SLEEPING;
+          chargingStatus = ChargingStatus.SLEEPING;
 
-              DataRaceTester.sleepForCollisions();
+          DataRaceTester.sleepForCollisions();
 
-              Log.userMessage("I will recharge as soon as I complete my order");
-              doWhenThereIsNoOrderToDeliver(
-                  () -> {
-                    assert !isDeliveringOrder();
+          Log.userMessage("I will recharge as soon as I complete my order");
+          doWhenThereIsNoOrderToDeliver(
+              () -> {
+                assert !isDeliveringOrder();
 
-                    Log.userMessage(
-                        "%d: Starting the recharge. Sleeping...", System.currentTimeMillis());
-                    try {
-                      assert chargingAreaLock.isOwned();
+                Log.userMessage(
+                    "%d: Starting the recharge. Sleeping...", System.currentTimeMillis());
+                try {
+                  assert chargingAreaLock.isOwned();
 
-                      chargingStatus = ChargingStatus.SLEEPING;
-                      try {
-                        Thread.sleep(TIME_TO_RECHARGE);
-                      } catch (InterruptedException e) {
-                        e.printStackTrace();
-                      }
-                    } finally {
-                      chargingAreaLock.release();
-                      chargingStatus = ChargingStatus.FINALIZING;
-                      Log.userMessage("%d: I have finished recharging", System.currentTimeMillis());
-                      DataRaceTester.sleepForCollisions();
+                  chargingStatus = ChargingStatus.SLEEPING;
+                  try {
+                    Thread.sleep(TIME_TO_RECHARGE);
+                  } catch (InterruptedException e) {
+                    e.printStackTrace();
+                  }
+                } finally {
+                  chargingAreaLock.release();
+                  chargingStatus = ChargingStatus.FINALIZING;
+                  Log.userMessage("%d: I have finished recharging", System.currentTimeMillis());
+                  DataRaceTester.sleepForCollisions();
 
-                      // Invece di statusUpdate potrebbe essere un semplice doneRecharging
-                      synchronized (this) {
-                        synchronized (localDataLock) {
-                          localData = new DroneData(new CityPoint(0, 0), 100);
-                        }
-                      }
-
-                      deliverToMaster(
-                          (master) -> {
-                            Log.debug("Deliver to master because of status update (lock release)");
-                            return middleware.notifyCompletedCharging(master, identifier);
-                          },
-                          () -> {
-                            Log.debug("Notified that I'm done recharging to master");
-                            chargingStatus = ChargingStatus.NOT_REQUESTED;
-                          });
+                  // Invece di statusUpdate potrebbe essere un semplice doneRecharging
+                  synchronized (this) {
+                    synchronized (localDataLock) {
+                      localData = new DroneData(new CityPoint(0, 0), 100);
                     }
-                    return true;
-                  });
-            })
-        .start();
+                  }
+
+                  Log.debug("deliverToMaster for RECHARGE");
+                  deliverToMaster(
+                      (master) -> {
+                        Log.debug("Deliver to master because of status update (lock release)");
+                        return middleware.notifyCompletedCharging(master, identifier);
+                      },
+                      () -> {
+                        Log.debug("Notified that I'm done recharging to master");
+                        chargingStatus = ChargingStatus.NOT_REQUESTED;
+                      });
+                }
+                return true;
+              });
+        });
   }
 
   public void changeStateTo(DroneState newState) {
@@ -221,7 +225,7 @@ public class Drone implements DroneCommunicationServer {
           new RingSlaveState(this, store, middleware, adminServerClient, electionManager));
     }
     masterHeartbeatTimer.scheduleAtFixedRate(masterHeartbeat, 0, MASTER_HEARTBEAT_PERIOD);
-    // printStatsTimer.scheduleAtFixedRate(printStatsTask, 0, PRINT_STATS_PERIOD);
+    printStatsTimer.scheduleAtFixedRate(printStatsTask, 0, PRINT_STATS_PERIOD);
   }
 
   @Override
@@ -250,21 +254,28 @@ public class Drone implements DroneCommunicationServer {
 
       store.signalFailedCommunicationWithDrone(knownMaster);
     }
-
-    electionManager.setOnNewMasterElectedListener(
-        () -> {
+    // nuovo master è eletto qui
+    electionManager.addOnNewMasterElectedListener(
+        (ElectionManager.OnNewMasterElectedListener thisListener) -> {
           if (send.apply(store.getKnownMaster())) {
-            electionManager.clearOnNewMasterElectedListener();
+            electionManager.clearOnNewMasterElectedListener(thisListener);
             onSuccess.run();
           } else {
             electionManager.beginElection();
           }
         });
+
     synchronized (electionManager) {
       // Check if we're currently in the middle of an election. If we're not then we start a new one
       electionManager.waitUntilNoElectionIsHappening();
       if (store.getKnownMaster() == knownMaster) {
         electionManager.beginElection();
+      } else {
+        // FIXME: se un nuovo master viene eletto prima che abbiamo settato il
+        // onNewMasterElectedListener abbiamo perso
+        // questo messaggio. Dovremmo controllare se a questo punto non è stato chiamato il
+        // onNewMasterElectedListener
+        // allora lo triggeriamo noi manualmente. Però come fare...
       }
     }
   }
@@ -284,55 +295,54 @@ public class Drone implements DroneCommunicationServer {
       localData = localData.withOrder(order);
     }
 
-    new Thread(
-            () -> {
-              Log.info("zzz for order %d", order.getId());
+    ThreadUtils.runInAnotherThread(
+        () -> {
+          Log.info("zzz for order %d", order.getId());
 
-              synchronized (localDataLock) {
-                localData = localData.decrementBattery(10);
-              }
+          synchronized (localDataLock) {
+            localData = localData.decrementBattery(10);
+          }
 
-              try {
-                Thread.sleep(5 * 1000);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-              }
+          try {
+            Thread.sleep(5 * 1000);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
 
-              Log.userMessage(
-                  "%d: Delivered order %s. Sending confirmation message...",
-                  System.currentTimeMillis(), order);
+          Log.userMessage(
+              "%d: Delivered order %s. Sending confirmation message...",
+              System.currentTimeMillis(), order);
 
-              CityPoint droneStartingPosition = getLocalData().getPosition();
-              double distanceTravelledForThisOrder =
-                  calculateTotalTravelledDistanceForOrder(droneStartingPosition, order);
-              CompletedDeliveryMessage message =
-                  new CompletedDeliveryMessage(
-                      System.currentTimeMillis(),
-                      getIdentifier(),
-                      order,
-                      distanceTravelledForThisOrder,
-                      pollutionTracker.readAllAndCleanAsDoubles(),
-                      getLocalData().getBatteryPercentage());
+          CityPoint droneStartingPosition = getLocalData().getPosition();
+          double distanceTravelledForThisOrder =
+              calculateTotalTravelledDistanceForOrder(droneStartingPosition, order);
+          CompletedDeliveryMessage message =
+              new CompletedDeliveryMessage(
+                  System.currentTimeMillis(),
+                  getIdentifier(),
+                  order,
+                  distanceTravelledForThisOrder,
+                  pollutionTracker.readAllAndCleanAsDoubles(),
+                  getLocalData().getBatteryPercentage());
 
-              totalDeliveredOrders++;
-              totalTravelledDistance += distanceTravelledForThisOrder;
+          totalDeliveredOrders++;
+          totalTravelledDistance += distanceTravelledForThisOrder;
 
-              synchronized (localDataLock) {
-                localData = localData.withoutOrder().moveTo(order.getDeliveryPoint());
-              }
+          synchronized (localDataLock) {
+            localData = localData.withoutOrder().moveTo(order.getDeliveryPoint());
+          }
 
-              deliverToMaster(
-                  (master) -> middleware.notifyCompletedDelivery(master, message),
-                  () -> {
-                    synchronized (noOrderToDeliverCallbackLock) {
-                      noOrderToDeliverCallbackLock.notifyAll();
-                    }
-                    currentState.afterCompletingAnOrder();
-                    Log.notice(
-                        "Order %d was fully completed (from slave perspective)", order.getId());
-                  });
-            })
-        .start();
+          Log.debug("deliverToMaster for ORDER_COMPLETITION");
+          deliverToMaster(
+              (master) -> middleware.notifyCompletedDelivery(master, message),
+              () -> {
+                synchronized (noOrderToDeliverCallbackLock) {
+                  noOrderToDeliverCallbackLock.notifyAll();
+                }
+                currentState.afterCompletingAnOrder();
+                Log.notice("Order %d was fully completed (from slave perspective)", order.getId());
+              });
+        });
     return true;
   }
 
@@ -377,6 +387,11 @@ public class Drone implements DroneCommunicationServer {
   }
 
   public void becomeMaster() {
+    if (currentState.isMaster()) {
+      Log.warn("This drone was asked to become master, but it already is master!");
+      return;
+    }
+
     Log.notice("Becoming master");
     changeStateTo(
         new RingMasterState(
@@ -397,22 +412,21 @@ public class Drone implements DroneCommunicationServer {
    *     completed, otherwise it won't be called again until the next invocation of this method
    */
   public void doWhenThereIsNoOrderToDeliver(BooleanSupplier callback) {
-    new Thread(
-            () -> {
-              boolean success;
-              synchronized (noOrderToDeliverCallbackLock) {
-                do {
-                  while (isDeliveringOrder()) {
-                    try {
-                      noOrderToDeliverCallbackLock.wait();
-                    } catch (InterruptedException e) {
-                      e.printStackTrace();
-                    }
-                  }
-                  success = callback.getAsBoolean();
-                } while (!success);
+    ThreadUtils.runInAnotherThread(
+        () -> {
+          boolean success;
+          synchronized (noOrderToDeliverCallbackLock) {
+            do {
+              while (isDeliveringOrder()) {
+                try {
+                  noOrderToDeliverCallbackLock.wait();
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
               }
-            })
-        .start();
+              success = callback.getAsBoolean();
+            } while (!success);
+          }
+        });
   }
 }
