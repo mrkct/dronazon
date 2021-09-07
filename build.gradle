@@ -86,6 +86,7 @@ test {
 }
 
 task runOrderGenerator(type: JavaExec) {
+    enableAssertions = true
     group = "Quick Runs"
     description = "Run the main class of the Dronazon order generator"
     classpath = sourceSets.main.runtimeClasspath
@@ -99,6 +100,7 @@ task runOrderGenerator(type: JavaExec) {
 }
 
 task runAdminServer(type: JavaExec) {
+    enableAssertions = true
     group = "Quick Runs"
     description = "Run the main class of the Dronazon admin server"
     classpath = sourceSets.main.runtimeClasspath
@@ -112,10 +114,26 @@ task runAdminServer(type: JavaExec) {
 }
 
 task runDrone(type: JavaExec) {
+    enableAssertions = true
     group = "Quick Runs"
     description = "Run the main class of a Dronazon drone"
     classpath = sourceSets.main.runtimeClasspath
     main = "it.cutecchia.sdp.drones.Main"
+    standardInput = System.in
+
+    java {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(8))
+        }
+    }
+}
+
+task runClient(type: JavaExec) {
+    enableAssertions = true
+    group = "Quick Runs"
+    description = "Run the main class of the server's client"
+    classpath = sourceSets.main.runtimeClasspath
+    main = "it.cutecchia.sdp.admin.client.Main"
     standardInput = System.in
 
     java {
