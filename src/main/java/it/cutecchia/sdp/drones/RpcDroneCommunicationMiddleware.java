@@ -38,17 +38,34 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
 
   private ManagedChannel getManagedChannel(DroneIdentifier drone) {
     Log.info("Connecting to %s...", drone);
-    if (openChannels.containsKey(drone)) {
-      Log.info("Reusing an already open channel");
-      return openChannels.get(drone);
+    synchronized (openChannels) {
+      if (openChannels.containsKey(drone)) {
+        Log.info("Reusing an already open channel");
+        return openChannels.get(drone);
+      }
     }
 
     ManagedChannel channel =
         ManagedChannelBuilder.forAddress(drone.getIpAddress(), drone.getConnectionPort())
             .usePlaintext()
             .build();
-    openChannels.put(drone, channel);
+    synchronized (openChannels) {
+      openChannels.put(drone, channel);
+    }
+
     return channel;
+  }
+
+  private void destroyChannel(DroneIdentifier drone) {
+    Log.info("Destroying channel to drone %s", drone);
+    ManagedChannel channel;
+    synchronized (openChannels) {
+      channel = openChannels.get(drone);
+    }
+    channel.shutdown();
+    synchronized (openChannels) {
+      openChannels.remove(drone);
+    }
   }
 
   private DroneServiceGrpc.DroneServiceBlockingStub getBlockingStub(DroneIdentifier drone) {
@@ -89,6 +106,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     } catch (StatusRuntimeException e) {
       Log.warn(
           "RPC Failed: notifyDroneJoin to #%d due to: %s", destination.getId(), e.getMessage());
+      destroyChannel(destination);
     }
 
     return Optional.empty();
@@ -120,6 +138,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     } catch (Exception e) {
       Log.warn(
           "Failed to assign order with context %s due to: %s", Context.current(), e.getMessage());
+      destroyChannel(drone);
       throw new DroneIsUnreachable();
     }
   }
@@ -146,6 +165,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
       Log.warn(
           "Failed to notify completed delivery to %d due to: %s",
           masterDrone.getId(), e.getMessage());
+      destroyChannel(masterDrone);
       // e.printStackTrace();
       return false;
     }
@@ -165,6 +185,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
       return Optional.of(DroneData.fromProto(getBlockingStub(drone).requestData(empty())));
     } catch (StatusRuntimeException e) {
       Log.warn("Failed to request data from %s: %s", drone, e.getMessage());
+      destroyChannel(drone);
       return Optional.empty();
     }
   }
@@ -196,6 +217,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     } catch (StatusRuntimeException e) {
       Log.warn(
           "Failed to send ELECTION message to %d due to: %s", destination.getId(), e.getMessage());
+      destroyChannel(destination);
       return false;
     }
   }
@@ -222,6 +244,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     } catch (StatusRuntimeException e) {
       Log.warn(
           "Failed to send ELECTED message to %d due to: %s", destination.getId(), e.getMessage());
+      destroyChannel(destination);
       return false;
     }
   }
@@ -243,6 +266,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     } catch (StatusRuntimeException e) {
       Log.warn(
           "Failed to receive HEARTBEAT from %d due to: %s", destination.getId(), e.getMessage());
+      destroyChannel(destination);
       return false;
     }
   }
@@ -258,6 +282,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
       Log.warn(
           "Failed to send COMPLETED_CHARGING to %d due to: %s",
           destination.getId(), e.getMessage());
+      destroyChannel(destination);
       return false;
     }
   }
@@ -266,27 +291,34 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   public void requestLock(
       DroneIdentifier destination, int logicalClock, DroneIdentifier requester) {
     try {
-      Log.info("Sending REQUEST_LOCK to %d", destination.getId());
       DroneServiceOuterClass.LockRequestMessage message =
           DroneServiceOuterClass.LockRequestMessage.newBuilder()
               .setRequester(requester.toProto())
               .setLogicalClock(logicalClock)
               .build();
-      Log.debug("STO MANDANDO IL MESSAGGIO DI REQUEST_LOCK A %s", destination);
       getBlockingStubWithoutDeadline(destination).requestLock(message);
     } catch (StatusRuntimeException e) {
       Log.warn("Failed to send REQUEST_LOCK to %d due to: %s", destination.getId(), e.getMessage());
+      destroyChannel(destination);
     }
   }
 
   @Override
   public synchronized void shutdown() {
     Log.notice("Shutting down the middleware...");
-    for (ManagedChannel channel : openChannels.values()) {
-      channel.shutdown();
-    }
+    ThreadUtils.spawnThreadForEach(openChannels.entrySet(), (entry) -> {
+      final ManagedChannel channel = entry.getValue();
+      final DroneIdentifier drone = entry.getKey();
+
+      channel.shutdownNow();
+      try {
+        channel.awaitTermination(2, TimeUnit.SECONDS);
+      } catch(InterruptedException e) {
+        Log.warn("Failed to shutdown channel to %s due to: %s", drone, e.getMessage());
+      }
+    });
     openChannels.clear();
-    rpcServer.shutdown();
+    rpcServer.shutdownNow();
   }
 
   // The methods below this point are the gRpc service callbacks, you should NOT call these
