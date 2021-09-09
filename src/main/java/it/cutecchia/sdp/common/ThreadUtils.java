@@ -22,19 +22,26 @@ public class ThreadUtils {
     }
   }
 
-  private static List<Thread> allSpawnedThreads = new ArrayList<>();
+  private static final List<Thread> allSpawnedThreads = new ArrayList<>();
 
   public static void runInAnotherThread(Runnable runnable) {
     Thread t = new Thread(runnable);
-    allSpawnedThreads.add(t);
+    synchronized (allSpawnedThreads) {
+      allSpawnedThreads.add(t);
+    }
+
     t.start();
   }
 
   public static void clearSpawnedThreadsList() {
-    allSpawnedThreads.clear();
+    synchronized (allSpawnedThreads) {
+      allSpawnedThreads.clear();
+    }
   }
 
   public static List<Thread> getAllSpawnedThreads() {
-    return allSpawnedThreads;
+    synchronized (allSpawnedThreads) {
+      return new ArrayList<>(allSpawnedThreads);
+    }
   }
 }

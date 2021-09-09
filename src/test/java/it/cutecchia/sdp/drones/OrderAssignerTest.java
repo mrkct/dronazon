@@ -1,15 +1,30 @@
 package it.cutecchia.sdp.drones;
 
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.*;
 
-import it.cutecchia.sdp.common.CityPoint;
-import it.cutecchia.sdp.common.DroneData;
-import it.cutecchia.sdp.common.DroneIdentifier;
-import it.cutecchia.sdp.common.Order;
+import it.cutecchia.sdp.common.*;
 import it.cutecchia.sdp.drones.store.InMemoryDroneStore;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class OrderAssignerTest {
+  @BeforeEach
+  public void clearSpawnedThreadsList() {
+    ThreadUtils.clearSpawnedThreadsList();
+  }
+
+  private static void waitForAllThreadsToBeDone() {
+    for (Thread t : ThreadUtils.getAllSpawnedThreads()) {
+      try {
+        t.join();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        fail();
+      }
+    }
+  }
+
   @Test
   public void closestDroneIsChosen()
       throws InterruptedException, DroneCommunicationClient.DroneIsUnreachable {
@@ -35,7 +50,7 @@ public class OrderAssignerTest {
     OrderAssigner assigner = new OrderAssigner(store, client);
     assigner.enqueueOrder(order);
 
-    Thread.sleep(100);
+    waitForAllThreadsToBeDone();
 
     verify(client, times(1)).assignOrder(same(order), same(closestDroneId));
   }
@@ -65,7 +80,7 @@ public class OrderAssignerTest {
     OrderAssigner assigner = new OrderAssigner(store, client);
     assigner.enqueueOrder(order);
 
-    Thread.sleep(100);
+    waitForAllThreadsToBeDone();
 
     verify(client, times(1)).assignOrder(same(order), same(highestBatteryDrone));
   }
@@ -95,7 +110,7 @@ public class OrderAssignerTest {
     OrderAssigner assigner = new OrderAssigner(store, client);
     assigner.enqueueOrder(order);
 
-    Thread.sleep(100);
+    waitForAllThreadsToBeDone();
 
     verify(client, times(1)).assignOrder(same(order), same(highestIdDrone));
   }
