@@ -306,17 +306,19 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   @Override
   public synchronized void shutdown() {
     Log.notice("Shutting down the middleware...");
-    ThreadUtils.spawnThreadForEach(openChannels.entrySet(), (entry) -> {
-      final ManagedChannel channel = entry.getValue();
-      final DroneIdentifier drone = entry.getKey();
+    ThreadUtils.spawnThreadForEach(
+        openChannels.entrySet(),
+        (entry) -> {
+          final ManagedChannel channel = entry.getValue();
+          final DroneIdentifier drone = entry.getKey();
 
-      channel.shutdownNow();
-      try {
-        channel.awaitTermination(2, TimeUnit.SECONDS);
-      } catch(InterruptedException e) {
-        Log.warn("Failed to shutdown channel to %s due to: %s", drone, e.getMessage());
-      }
-    });
+          channel.shutdownNow();
+          try {
+            channel.awaitTermination(2, TimeUnit.SECONDS);
+          } catch (InterruptedException e) {
+            Log.warn("Failed to shutdown channel to %s due to: %s", drone, e.getMessage());
+          }
+        });
     openChannels.clear();
     rpcServer.shutdownNow();
   }
