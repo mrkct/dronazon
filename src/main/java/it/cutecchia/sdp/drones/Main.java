@@ -86,7 +86,7 @@ public class Main {
     Drone drone =
         new Drone(
             new DroneIdentifier(args.getDroneId(), "localhost", args.getRpcListenPort()),
-            new MqttOrderSource("mqtt.mrkct.xyz", 8000, "dronazon/smartcity/orders"),
+            new MqttOrderSource("localhost", 8000, "dronazon/smartcity/orders"),
             new AdminServerClient(args.getAdminServerAddress(), args.getAdminServerPort()));
 
     Thread userInputThread =

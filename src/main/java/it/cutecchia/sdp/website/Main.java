@@ -14,7 +14,7 @@ public class Main {
 
   private static final String MQTT_USERNAME = "mrkct";
   private static final String MQTT_PASSWORD = "segreto";
-  private static final String MQTT_CONNECT_STRING = "tcp://mrkct.vps.webdock.io:8000";
+  private static final String MQTT_CONNECT_STRING = "tcp://localhost:8000";
   private static final String MQTT_ORDERS_TOPIC = "dronazon/smartcity/orders";
 
   public static void main(String[] args) {
