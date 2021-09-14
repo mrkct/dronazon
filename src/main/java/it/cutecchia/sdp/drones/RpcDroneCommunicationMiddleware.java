@@ -60,11 +60,10 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     Log.info("Destroying channel to drone %s", drone);
     ManagedChannel channel;
     synchronized (openChannels) {
-      channel = openChannels.get(drone);
+      channel = openChannels.remove(drone);
     }
-    channel.shutdown();
-    synchronized (openChannels) {
-      openChannels.remove(drone);
+    if (channel != null && !channel.isShutdown()) {
+      channel.shutdown();
     }
   }
 
