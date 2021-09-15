@@ -69,7 +69,6 @@ public class AdminServerClient {
 
     WebResource resource = client.resource(getServerEndpoint("/stats"));
 
-    // FIXME: If I return the object directly on the server the json is just '{}'
     Gson gson = new Gson();
     resource.type(MediaType.APPLICATION_JSON).post(gson.toJson(stats));
   }
