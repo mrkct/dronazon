@@ -58,6 +58,7 @@ public class Drone implements DroneCommunicationServer {
               totalTravelledDistance,
               getLocalData().getBatteryPercentage(),
               currentState.isMaster() ? "yes" : "no");
+          currentState.printStats();
         }
       };
 
@@ -66,7 +67,6 @@ public class Drone implements DroneCommunicationServer {
       new TimerTask() {
         @Override
         public void run() {
-          Log.debug("deliverToMaster for HEARTBEAT");
           deliverToMaster(middleware::requestHeartbeat, () -> {});
         }
       };
@@ -254,28 +254,32 @@ public class Drone implements DroneCommunicationServer {
 
       store.signalFailedCommunicationWithDrone(knownMaster);
     }
-    // nuovo master è eletto qui
-    electionManager.addOnNewMasterElectedListener(
-        (ElectionManager.OnNewMasterElectedListener thisListener) -> {
-          if (send.apply(store.getKnownMaster())) {
-            electionManager.clearOnNewMasterElectedListener(thisListener);
-            onSuccess.run();
-          } else {
-            electionManager.beginElection();
-          }
-        });
 
     synchronized (electionManager) {
+      final ElectionManager.OnNewMasterElectedListener onNewMasterElectedListener =
+          (thisListener) -> {
+            if (send.apply(store.getKnownMaster())) {
+              electionManager.clearOnNewMasterElectedListener(thisListener);
+              onSuccess.run();
+            } else {
+              electionManager.beginElection();
+            }
+          };
+
+      electionManager.addOnNewMasterElectedListener(onNewMasterElectedListener);
+      if (store.getKnownMaster() != null) {
+        // Edge case: the master was elected just before we entered the synchronized block
+        // Ugly fix: We trigger the callback manually
+        Log.warn("I had to manually start the newMasterElected callback");
+        ThreadUtils.runInAnotherThread(
+            () -> onNewMasterElectedListener.onNewMasterElected(onNewMasterElectedListener));
+        return;
+      }
+
       // Check if we're currently in the middle of an election. If we're not then we start a new one
       electionManager.waitUntilNoElectionIsHappening();
-      if (store.getKnownMaster() == knownMaster) {
+      if (store.getKnownMaster() == null) {
         electionManager.beginElection();
-      } else {
-        // FIXME: se un nuovo master viene eletto prima che abbiamo settato il
-        // onNewMasterElectedListener abbiamo perso
-        // questo messaggio. Dovremmo controllare se a questo punto non è stato chiamato il
-        // onNewMasterElectedListener
-        // allora lo triggeriamo noi manualmente. Però come fare...
       }
     }
   }

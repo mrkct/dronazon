@@ -19,6 +19,8 @@ public interface DroneState {
     Log.warn("Only the master should receive COMPLETED_CHARGE");
   }
 
+  default void printStats() {}
+
   void afterCompletingAnOrder();
 
   default void onNewDroneJoin(DroneIdentifier newDrone) {}

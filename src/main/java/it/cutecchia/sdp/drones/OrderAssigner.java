@@ -91,7 +91,6 @@ public class OrderAssigner {
         .filter(
             id -> {
               Optional<DroneData> data = dronesStore.getDroneData(id);
-              Log.info("\t#%d -> %s", id.getId(), data.orElse(null));
               return data.isPresent() && data.get().isAvailableForDeliveries();
             })
         .collect(Collectors.toSet());
@@ -99,11 +98,7 @@ public class OrderAssigner {
 
   /** Assign all possible orders and wait for the drones to reply or timeout. */
   private synchronized void assignAllPossibleOrders() {
-    Log.info("OrderAssigner: Assigning all I can");
     Set<DroneIdentifier> drones = getAvailableDronesForDeliveries();
-    Log.info(
-        "OrderAssigner: %d available drones for %d pending orders",
-        drones.size(), pendingOrders.size());
 
     Map<DroneIdentifier, Order> assignedOrders = new HashMap<>();
     while (!drones.isEmpty() && !pendingOrders.isEmpty()) {
@@ -111,6 +106,7 @@ public class OrderAssigner {
       DroneIdentifier drone = findBestDroneForOrder(drones, order);
       drones.remove(drone);
       assignedOrders.put(drone, order);
+      Log.info("OrderAssigner: Assigning %s to %d", order, drone.getId());
     }
 
     ThreadUtils.spawnThreadForEach(
@@ -143,10 +139,25 @@ public class OrderAssigner {
             }
           }
         });
+  }
 
-    Log.info(
-        "OrderAssigner: Completed. Available drones: %d, pending orders: %d",
-        drones.size(), pendingOrders.size());
+  public void printInfo() {
+    final Set<DroneIdentifier> drones = dronesStore.getAllDroneIdentifiers();
+    Log.userMessage("Currently there are %d pending orders", pendingOrders.size());
+    Log.userMessage("--- Delivering ---");
+    for (DroneIdentifier drone : drones) {
+      final Optional<DroneData> data = dronesStore.getDroneData(drone);
+      if (data.isPresent() && data.get().getAssignedOrder() != null) {
+        Log.userMessage("%d -> %s", drone.getId(), data.get());
+      }
+    }
+    Log.userMessage("--- Possibly available ---");
+    for (DroneIdentifier drone : drones) {
+      final Optional<DroneData> data = dronesStore.getDroneData(drone);
+      if (data.isPresent() && data.get().getAssignedOrder() == null) {
+        Log.userMessage("%d -> %s", drone.getId(), data.get());
+      }
+    }
   }
 
   private Runnable noPendingOrdersCallback = null;

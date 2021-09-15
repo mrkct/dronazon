@@ -150,4 +150,9 @@ public class RingMasterState implements DroneState, OrderSource.OrderListener {
   public boolean isMaster() {
     return true;
   }
+
+  @Override
+  public void printStats() {
+    orderAssigner.printInfo();
+  }
 }
