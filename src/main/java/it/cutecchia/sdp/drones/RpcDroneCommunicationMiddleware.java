@@ -37,10 +37,10 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   }
 
   private ManagedChannel getManagedChannel(DroneIdentifier drone) {
-    Log.info("Connecting to %s...", drone);
+    Log.trace("Connecting to %s...", drone);
     synchronized (openChannels) {
       if (openChannels.containsKey(drone)) {
-        Log.info("Reusing an already open channel");
+        Log.trace("Reusing an already open channel");
         return openChannels.get(drone);
       }
     }
@@ -52,6 +52,7 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
     synchronized (openChannels) {
       openChannels.put(drone, channel);
     }
+    Log.info("Created a new channel for %s", drone);
 
     return channel;
   }
@@ -258,9 +259,9 @@ public class RpcDroneCommunicationMiddleware extends DroneServiceGrpc.DroneServi
   @Override
   public boolean requestHeartbeat(DroneIdentifier destination) {
     try {
-      Log.info("Sending HEARTBEAT to %d", destination.getId());
+      Log.trace("Sending HEARTBEAT to %d", destination.getId());
       getBlockingStub(destination).requestHeartbeat(empty());
-      Log.info("Received HEARTBEAT from %d", destination.getId());
+      Log.trace("Received HEARTBEAT from %d", destination.getId());
       return true;
     } catch (StatusRuntimeException e) {
       Log.warn(

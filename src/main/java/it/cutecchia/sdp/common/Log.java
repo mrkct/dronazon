@@ -11,6 +11,15 @@ public class Log {
 
   private static final int LOG_LEVEL = 5;
 
+  public static synchronized void trace(String message, Object... args) {
+    if (LOG_LEVEL < 6) return;
+    synchronized (System.out) {
+      synchronized (System.err) {
+        System.out.printf("[TRACE]: " + message + "%n" + ANSI_RESET, args);
+      }
+    }
+  }
+
   public static synchronized void info(String message, Object... args) {
     if (LOG_LEVEL < 5) return;
     synchronized (System.out) {
