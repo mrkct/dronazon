@@ -4,6 +4,7 @@ plugins {
     id "war" // for REST
 
     id "com.diffplug.spotless" version "5.15.0"
+    id 'com.github.johnrengelman.shadow' version '6.1.0'
 }
 
 group 'it.cutecchia.sdp'
@@ -20,6 +21,10 @@ spotless {
         }
         googleJavaFormat()
     }
+}
+
+shadowJar {
+    mergeServiceFiles()
 }
 
 dependencies {
