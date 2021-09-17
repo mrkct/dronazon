@@ -60,9 +60,9 @@ public class DistributedLock {
     ThreadUtils.spawnThreadForEach(
         store.getAllDroneIdentifiers(),
         drone -> {
-          Log.debug("Requesting the lock from %s", drone);
+          Log.info("Requesting the lock from %s", drone);
           client.requestLock(drone, lockRequestTimestamp, thisDrone);
-          Log.debug("%s gave up the lock!", drone);
+          Log.info("%s gave up the lock!", drone);
         });
 
     lockStatus = LockStatus.OWNED;
@@ -74,7 +74,7 @@ public class DistributedLock {
   }
 
   private synchronized void waitUntilDoneWithLock() {
-    Log.debug("I will wait until im done with this lock");
+    Log.info("I will wait until im done with this lock");
     while (lockStatus != LockStatus.NOT_INTERESTED) {
       try {
         wait();
@@ -82,23 +82,23 @@ public class DistributedLock {
         e.printStackTrace();
       }
     }
-    Log.debug("I am done with this lock");
+    Log.info("I am done with this lock");
   }
 
   public void onLockRequest(int logicalClock, DroneIdentifier requester) {
-    Log.debug("Received a lock request <Clock=%d, Drone=%s>", logicalClock, requester);
-    Log.debug(
+    Log.notice("Received a lock request <Clock=%d, Drone=%s>", logicalClock, requester);
+    Log.notice(
         "Me: %d   Clock=%d    LockStatus=%s    lockRequestTimestamp=%d",
         thisDrone.getId(), clock.value(), lockStatus, lockRequestTimestamp);
     clock.update(logicalClock);
     if (lockStatus == LockStatus.NOT_INTERESTED) {
-      Log.debug("I am not interested in the lock so I don't block");
+      Log.notice("I am not interested in the lock so I don't block");
     } else if (lockStatus == LockStatus.OWNED
         || (lockStatus == LockStatus.WAITING && lockRequestTimestamp < logicalClock)) {
-      Log.debug("Added drone to the waiting list (my clock=%d)", lockRequestTimestamp);
+      Log.notice("Added drone to the waiting list (my clock=%d)", lockRequestTimestamp);
       waitUntilDoneWithLock();
     } else {
-      Log.debug(
+      Log.notice(
           "Sent confirmation because they have precedence (my clock=%d)", lockRequestTimestamp);
     }
   }

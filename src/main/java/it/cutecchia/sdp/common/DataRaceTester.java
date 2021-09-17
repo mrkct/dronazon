@@ -10,7 +10,7 @@ public class DataRaceTester {
     if (!SLEEP_ENABLED) return;
     try {
       long waitTime = NEXT_MILLIS_MULTIPLE - (System.currentTimeMillis() % NEXT_MILLIS_MULTIPLE);
-      Log.info("DataRaceTester: Waiting for %dms...", waitTime);
+      Log.debug("DataRaceTester: Waiting for %dms...", waitTime);
       Thread.sleep(waitTime);
     } catch (InterruptedException e) {
       e.printStackTrace();

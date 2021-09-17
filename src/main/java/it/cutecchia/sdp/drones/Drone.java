@@ -147,12 +147,9 @@ public class Drone implements DroneCommunicationServer {
               localData = localData.refuseOrders();
             }
           }
-          DataRaceTester.sleepForCollisions();
-          Log.debug("Took the lock!");
+          Log.notice("Took the lock!");
 
           chargingStatus = ChargingStatus.SLEEPING;
-
-          DataRaceTester.sleepForCollisions();
 
           Log.userMessage("I will recharge as soon as I complete my order");
           doWhenThereIsNoOrderToDeliver(
@@ -174,7 +171,6 @@ public class Drone implements DroneCommunicationServer {
                   chargingAreaLock.release();
                   chargingStatus = ChargingStatus.FINALIZING;
                   Log.userMessage("%d: I have finished recharging", System.currentTimeMillis());
-                  DataRaceTester.sleepForCollisions();
 
                   // Invece di statusUpdate potrebbe essere un semplice doneRecharging
                   synchronized (this) {
@@ -183,16 +179,9 @@ public class Drone implements DroneCommunicationServer {
                     }
                   }
 
-                  Log.debug("deliverToMaster for RECHARGE");
                   deliverToMaster(
-                      (master) -> {
-                        Log.debug("Deliver to master because of status update (lock release)");
-                        return middleware.notifyCompletedCharging(master, identifier);
-                      },
-                      () -> {
-                        Log.debug("Notified that I'm done recharging to master");
-                        chargingStatus = ChargingStatus.NOT_REQUESTED;
-                      });
+                      (master) -> middleware.notifyCompletedCharging(master, identifier),
+                      () -> chargingStatus = ChargingStatus.NOT_REQUESTED);
                 }
                 return true;
               });
@@ -231,7 +220,6 @@ public class Drone implements DroneCommunicationServer {
   @Override
   public DroneJoinResponse onDroneJoin(DroneIdentifier identifier, CityPoint startingPosition) {
     store.addDrone(identifier);
-    DataRaceTester.sleepForCollisions();
     store.handleDroneUpdateData(identifier, new DroneData(startingPosition));
     Log.notice("A new drone (#%d) joined the ring at %s", identifier.getId(), startingPosition);
     currentState.onNewDroneJoin(identifier);
@@ -336,7 +324,6 @@ public class Drone implements DroneCommunicationServer {
             localData = localData.withoutOrder().moveTo(order.getDeliveryPoint());
           }
 
-          Log.debug("deliverToMaster for ORDER_COMPLETITION");
           deliverToMaster(
               (master) -> middleware.notifyCompletedDelivery(master, message),
               () -> {

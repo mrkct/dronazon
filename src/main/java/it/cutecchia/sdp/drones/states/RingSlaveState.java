@@ -93,7 +93,6 @@ public class RingSlaveState implements DroneState {
     if (drone.getLocalData().isLowBattery()) drone.shutdown();
 
     if (shutdownInitiated) {
-      DataRaceTester.sleepForCollisions();
       forceShutdown();
     }
   }
