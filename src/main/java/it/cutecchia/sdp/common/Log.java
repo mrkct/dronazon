@@ -2,14 +2,14 @@ package it.cutecchia.sdp.common;
 
 public class Log {
   private static final String ANSI_RESET = "\u001B[0m";
-  private static final String ANSI_CYAN = "\033[0;36m";
+  private static final String ANSI_CYAN = "\033[1;36m";
   private static final String ANSI_MAGENTA = "\033[0;35m";
   private static final String ANSI_BLUE = "\u001B[34m";
   private static final String ANSI_YELLOW = "\u001B[33m";
-  private static final String ANSI_GREEN = "\033[32m";
+  private static final String ANSI_GREEN = "\033[1;32m";
   private static final String ANSI_RED = "\u001B[31m";
 
-  private static final int LOG_LEVEL = 5;
+  private static final int LOG_LEVEL = 4;
 
   public static synchronized void trace(String message, Object... args) {
     if (LOG_LEVEL < 6) return;
@@ -67,7 +67,7 @@ public class Log {
   public static synchronized void userMessage(String message, Object... args) {
     synchronized (System.out) {
       synchronized (System.err) {
-        System.out.printf(ANSI_MAGENTA + message + "%n" + ANSI_RESET, args);
+        System.out.printf(ANSI_GREEN + message + "%n" + ANSI_RESET, args);
       }
     }
   }
