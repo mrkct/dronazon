@@ -16,13 +16,17 @@ The basic gist of the structure is that we have the following components in the 
 
 ## Running this project - the quick way
 
-Install Gradle >=6.8, and an MQTT broker such as Mosquitto. Run the broker at localhost, port 8000 without 
+Install Gradle >=6.8 and an MQTT broker such as Mosquitto. Run the broker at localhost, port 8000 without 
 authentication. Open 3 terminal windows and run these commands, one for each window:
 - `gradle runOrderGenerator`
 - `gradle runAdminServer`
-- 'gradle runClient'
+- `gradle runClient`
 
-Open some more terminals, one for each drone you want in the system, and run in every one of the `gradle runDrone`
+Open some more terminals, one for each drone you want in the system, and run in every one of the `gradle runDrone`.
+Note that if you're running many instances of the drone and the overhead from using Gradle is too much you can also 
+generate a JAR using `gradle shadowJar` and run each drone directly using:
+
+    java -cp build/libs/name_of_the_generated_file-jar it.cutecchia.sdp.drones.Main <rest of the arguments>
 
 ## Running this project - the detailed way
 
